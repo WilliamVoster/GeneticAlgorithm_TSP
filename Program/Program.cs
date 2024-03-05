@@ -14,6 +14,8 @@ namespace Program
 
             TSP problem = TSP.readJSON(solutionDir + "Data/train_0.json");
 
+            Population population = new Population(50, problem);
+
             Console.WriteLine("test");
             Console.ReadLine();
 

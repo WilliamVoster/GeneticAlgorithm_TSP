@@ -10,14 +10,24 @@ namespace Program
 {
     internal class Population
     {
-        private Dictionary<Chromosome, Double> population;
         private TSP problem;
-        public Population(TSP problem) 
+        private Chromosome[] population;
+        private Dictionary<Chromosome, Double> fitnessLookUp;
+
+        public Population(int popSize, TSP problem) 
         {
             this.problem = problem;
-            this.population = new Dictionary<Chromosome, Double>();
+            this.population = new Chromosome[popSize];
+            this.fitnessLookUp = new Dictionary<Chromosome, Double>();
         }
 
+        private void calcFitness()
+        {
+            foreach (Chromosome chromosome in population)
+            {
+
+            }
+        }
         
     }
 }
