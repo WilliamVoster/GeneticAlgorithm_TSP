@@ -11,7 +11,7 @@ namespace Program
 {
     internal class Chromosome
     {
-        private int?[,] nursePaths;
+        public int?[,] nursePaths;
         public double? fitness { get; set; }
         private int numNurses;
         private int numPatients;

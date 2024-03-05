@@ -24,9 +24,33 @@ namespace Program
             this.fitnessLookUp = new Dictionary<Chromosome, double>();
         }
 
-        public void inintialize()
+        public void inintializeEvenPatientSplit()
         {
+            int numNurses = problem.nbr_nurses;
+            int numPatients = problem.patients.Count;
+            int numPatientsPerNurse = numPatients / numNurses + 1;
 
+            for (int i = 0; i < popSize; i++)
+            {
+                Chromosome chromosome = new Chromosome(numNurses, numPatients);
+
+                int nurseID = 0;
+                int countPatients = 0;
+                foreach (int patientID in problem.patients.Keys)
+                {
+                    chromosome.nursePaths[nurseID, countPatients] = patientID;
+
+                    if (countPatients >= numPatientsPerNurse)
+                    {
+                        countPatients = 0;
+                        nurseID++;
+                    }
+                    else
+                        countPatients++;
+
+                }
+                population[i] = chromosome;
+            }
         }
 
         public void calcFitness()
