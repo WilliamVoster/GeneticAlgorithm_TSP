@@ -11,8 +11,10 @@ namespace Program
     internal class Population
     {
         private Dictionary<Chromosome, Double> population;
-        public Population() 
+        private TSP problem;
+        public Population(TSP problem) 
         {
+            this.problem = problem;
             this.population = new Dictionary<Chromosome, Double>();
         }
 

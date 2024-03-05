@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Program
 {
-    internal class TSPProblem
+    internal class TSP
     {
         public int nbr_nurses {  get; set; }
         public string instance_name { get; set; }
@@ -19,10 +19,10 @@ namespace Program
         public Double[,] travel_times { get; set; }
 
 
-        public static TSPProblem readJSON(string filepath)
+        public static TSP readJSON(string filepath)
         {
             string jsonString = File.ReadAllText(filepath);
-            TSPProblem myProblem = JsonConvert.DeserializeObject<TSPProblem>(jsonString);
+            TSP myProblem = JsonConvert.DeserializeObject<TSP>(jsonString);
             return myProblem;
         }
     }

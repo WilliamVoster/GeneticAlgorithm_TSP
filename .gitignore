@@ -59,12 +59,11 @@ dkms.conf
 
 *.user
 
-
 Data/
 
 **packages/
 
-
+**code_structure.cs
 
 
 
