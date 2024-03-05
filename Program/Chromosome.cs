@@ -10,6 +10,7 @@ namespace Program
     internal class Chromosome
     {
         private int[] data;
+        public double? fitness { get; set; }
         public Chromosome(int size) 
         {
             this.data = new int[size];

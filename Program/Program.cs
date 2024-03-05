@@ -16,6 +16,8 @@ namespace Program
 
             Population population = new Population(50, problem);
 
+            population.calcFitness();
+
             Console.WriteLine("test");
             Console.ReadLine();
 
