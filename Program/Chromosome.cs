@@ -1,6 +1,8 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Policy;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -9,11 +11,16 @@ namespace Program
 {
     internal class Chromosome
     {
-        private int[] data;
+        private int?[,] nursePaths;
         public double? fitness { get; set; }
-        public Chromosome(int size) 
+        private int numNurses;
+        private int numPatients;
+        public Chromosome(int numNurses, int numPatients) 
         {
-            this.data = new int[size];
+            
+            this.nursePaths = new int?[numNurses, numPatients];
+            this.numNurses = numNurses;
+            this.numPatients = numPatients;
         }
 
         public override bool Equals(object obj)
@@ -23,10 +30,16 @@ namespace Program
 
             Chromosome other = (Chromosome)obj;
 
-            for (int i = 0; i < this.data.Length; i++)
+            for (int i = 0; i < this.numNurses; i++)
             {
-                if (other.data[i] != this.data[i])
-                    return false;
+                for (int j = 0; j < this.numPatients; j++)
+                {
+                    if (nursePaths[i, j] == null)
+                        break;
+
+                    if (other.nursePaths[i, j] != this.nursePaths[i, j])
+                        return false;
+                }
             }
             return true;
         }
@@ -36,7 +49,17 @@ namespace Program
             unchecked
             {
                 int hash = 17;
-                hash = hash * 23 + this.data.GetHashCode();
+
+                for (int i = 0; i < this.numNurses; i++)
+                {
+                    for (int j = 0; j < this.numPatients; j++)
+                    {
+                        if (nursePaths[i, j] == null)
+                            break;
+
+                        hash = hash * 23 + nursePaths[i, j].GetHashCode();
+                    }
+                }
                 return hash;
             }
         }
