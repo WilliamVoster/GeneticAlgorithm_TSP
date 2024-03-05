@@ -60,10 +60,9 @@ dkms.conf
 *.user
 
 
+Data/
 
-
-
-
+**packages/
 
 
 
