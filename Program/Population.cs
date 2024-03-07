@@ -55,9 +55,6 @@ namespace Program
 
         public void calcFitness()
         {
-            //Chromosome a = new Chromosome(5, 10);
-            //this.fitnessLookUp.Add(a, 0.12);
-
             double fitness;
             for (int i = 0; i < population.Length; i++)
             {

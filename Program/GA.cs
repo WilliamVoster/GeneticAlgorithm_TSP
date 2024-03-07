@@ -17,6 +17,8 @@ namespace Program
 
             GA geneticAlgorithm = new GA(training_problem_0, 100);
 
+            geneticAlgorithm.run();
+
             //Population population = new Population(50, problem);
 
             //population.calcFitness();
@@ -32,10 +34,12 @@ namespace Program
         TSP problem;
         int numIterations;
         Population population;
+        Random random;
         public GA(TSP problem, int numIterations) 
         {
             this.problem = problem;
             this.numIterations = numIterations; 
+            this.random = new Random();
         }
 
         public void run()
@@ -45,19 +49,19 @@ namespace Program
             population = new Population(50, problem);
             population.inintializeEvenPatientSplit();
 
-
+            problem.calcAvgNumPatientsPerNurse();
             int numParents = 2;
             for (int i = 0; i < numIterations; i++)
             {
-                //Parent Selection
                 population.calcFitness();
                 population.sort();
 
+                //Parent Selection
                 Chromosome[] parents = elitistSelection(numParents); // TODO: instead of copying and creating new parents, just look at the original individuals in population
 
 
                 //Crossover
-
+                Chromosome[] children = crossover(parents);
 
                 //Mutatuon
                 // TODO, remember to set child fitness = null
@@ -88,7 +92,24 @@ namespace Program
             
         }
 
-        private void crossover()
+        
+        private Chromosome[] crossover(Chromosome[] parents)
+        {
+            //int?[,] route = new int?[2, parents[0].numPatients];
+            int?[] route;// = new int?[parents[0].numPatients];
+            int nurseIndex;
+            for (int i = 0; i < parents.Length; i += 2)
+            {
+                parents[i].updateNumNurses();
+                nurseIndex = random.Next(0, parents[i].numNurses);
+                route = parents[i].nursePaths[];
+
+            }
+
+            return new Chromosome[parents.Length];
+        }
+
+        private void clusteringKMeans()
         {
 
         }

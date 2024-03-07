@@ -9,7 +9,7 @@ using System.Xml.Linq;
 
 namespace Program
 {
-    internal class Chromosome
+    internal class Chromosome : IComparable<Chromosome>
     {
         public int?[,] nursePaths { get; private set; }
         public double? fitness { get; set; }
@@ -23,6 +23,19 @@ namespace Program
             this.numPatients = numPatients;
         }
 
+        public void updateNumNurses() // updates number of nurses to reflect the current utilization of nurses, i.e. if not are all used
+        {
+            for (int i = 0; i < nursePaths.GetLength(0); i++) 
+            {
+                if (nursePaths[i, 0] == null)
+                {
+                    numNurses = i;
+                    return;
+                }
+            }
+            numNurses = nursePaths.GetLength(0);
+        }
+        
         public override bool Equals(object obj)
         {
             if (obj == null || GetType() != obj.GetType())
@@ -30,14 +43,17 @@ namespace Program
 
             Chromosome other = (Chromosome)obj;
 
-            for (int i = 0; i < this.numNurses; i++)
+            for (int i = 0; i < numNurses; i++)
             {
-                for (int j = 0; j < this.numPatients; j++)
+                if (nursePaths[i, 0] == null)
+                    break;
+
+                for (int j = 0; j < numPatients; j++)
                 {
                     if (nursePaths[i, j] == null)
                         break;
 
-                    if (other.nursePaths[i, j] != this.nursePaths[i, j])
+                    if (other.nursePaths[i, j] != nursePaths[i, j])
                         return false;
                 }
             }
@@ -96,6 +112,11 @@ namespace Program
             fitness += problem.travel_times[previousLocation, 0];
 
             return (double)fitness;
+        }
+
+        public int CompareTo(Chromosome other)
+        {
+            return ((double)fitness).CompareTo((double)other.fitness);
         }
     }
 }

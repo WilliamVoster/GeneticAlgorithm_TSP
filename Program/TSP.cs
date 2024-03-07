@@ -17,6 +17,7 @@ namespace Program
         public Depot depot { get; set; }
         public Dictionary<int, Patient> patients { get; set; }
         public Double[,] travel_times { get; set; }
+        public int avgNumPatientsPerNurse { get; private set; }
 
 
         public static TSP readJSON(string filepath)
@@ -24,6 +25,16 @@ namespace Program
             string jsonString = File.ReadAllText(filepath);
             TSP myProblem = JsonConvert.DeserializeObject<TSP>(jsonString);
             return myProblem;
+        }
+
+        public void calcAvgNumPatientsPerNurse()
+        {
+            double sumPatientDemand = 0.0;
+            foreach (var patient in patients.Values)
+            {
+                sumPatientDemand += patient.demand;
+            }
+            avgNumPatientsPerNurse = (int)(sumPatientDemand / patients.Count / capacity_nurse);
         }
 
     }
