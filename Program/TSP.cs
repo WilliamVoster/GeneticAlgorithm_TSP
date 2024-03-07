@@ -25,6 +25,7 @@ namespace Program
             TSP myProblem = JsonConvert.DeserializeObject<TSP>(jsonString);
             return myProblem;
         }
+
     }
 
     internal class Depot

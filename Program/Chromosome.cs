@@ -64,5 +64,35 @@ namespace Program
             }
         }
 
+        public double calcFitness(TSP problem)
+        {
+            double fitness = 0.0;
+            int previousLocation = 0;   // Starts at depot
+            int currentLocation;
+
+            for (int i = 0;i < numNurses; i++)
+            {
+                if (nursePaths[i, 0] == null)
+                    break;
+
+                for (int j = 0;j < numPatients; j++)
+                {
+                    if (nursePaths[i, j] == null)
+                        break;
+
+                    currentLocation = (int)nursePaths[i, j] - 1; // -1 since patientID start on 1, not 0
+
+                    fitness += problem.travel_times[previousLocation, currentLocation];
+
+                    previousLocation = currentLocation;
+                }
+                
+            }
+
+            // Add distance travelled for route back to depot
+            fitness += problem.travel_times[previousLocation, 0];
+
+            return fitness;
+        }
     }
 }

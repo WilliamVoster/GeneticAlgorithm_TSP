@@ -70,7 +70,11 @@ namespace Program
                     continue;
                 }
 
-                //TODO: calc distance travelled as fitness
+                fitness = population[i].calcFitness(problem);
+
+                population[i].fitness = fitness;
+
+                fitnessLookUp[population[i]] = fitness;
 
             }
         }

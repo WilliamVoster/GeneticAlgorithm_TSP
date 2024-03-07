@@ -18,13 +18,17 @@ namespace Program
 
             population.inintializeEvenPatientSplit();
 
-            //population.calcFitness();
+            population.calcFitness();
+
+            // TODO remember to set fitness to null on chromosome if mutate/change genome!!
 
             Console.WriteLine("test");
-            Console.ReadLine();
+            //Console.ReadLine();
 
 
         }
+
+
     }
 
 
