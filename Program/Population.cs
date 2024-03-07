@@ -12,7 +12,7 @@ namespace Program
     internal class Population
     {
         private TSP problem;
-        private Chromosome[] population;
+        public Chromosome[] population { get; private set; }
         private Dictionary<Chromosome, double> fitnessLookUp;
         public int popSize {  get; private set; }
 
@@ -72,12 +72,14 @@ namespace Program
 
                 fitness = population[i].calcFitness(problem);
 
-                population[i].fitness = fitness;
-
                 fitnessLookUp[population[i]] = fitness;
 
             }
         }
         
+        public void sort()
+        {
+            Array.Sort(population);
+        }
     }
 }

@@ -48,7 +48,7 @@
   <ItemGroup>
     <Compile Include="Chromosome.cs" />
     <Compile Include="Population.cs" />
-    <Compile Include="Program.cs" />
+    <Compile Include="GA.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TSP.cs" />
   </ItemGroup>

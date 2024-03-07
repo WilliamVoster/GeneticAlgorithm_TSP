@@ -11,10 +11,10 @@ namespace Program
 {
     internal class Chromosome
     {
-        public int?[,] nursePaths;
+        public int?[,] nursePaths { get; private set; }
         public double? fitness { get; set; }
-        private int numNurses;
-        private int numPatients;
+        public int numNurses;
+        public int numPatients;
         public Chromosome(int numNurses, int numPatients) 
         {
             
@@ -66,7 +66,10 @@ namespace Program
 
         public double calcFitness(TSP problem)
         {
-            double fitness = 0.0;
+            if (fitness != null)
+                return (double)fitness;
+
+            fitness = 0.0;
             int previousLocation = 0;   // Starts at depot
             int currentLocation;
 
@@ -92,7 +95,7 @@ namespace Program
             // Add distance travelled for route back to depot
             fitness += problem.travel_times[previousLocation, 0];
 
-            return fitness;
+            return (double)fitness;
         }
     }
 }
