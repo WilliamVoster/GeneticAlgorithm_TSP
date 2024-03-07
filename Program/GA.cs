@@ -80,9 +80,14 @@ namespace Program
         {
             Chromosome[] selected = new Chromosome[n];
 
-            //population.sort();
+            for (int i = 0; i < n; i++)
+            {
+                selected[i] = (Chromosome)population.population[i].Clone();
+            }
 
-            Array.Copy(population.population, 0, selected, 0, n);
+            //Chromosome[] populationCopy = (Chromosome[])population.population.Clone();
+
+            //Array.Copy(populationCopy, 0, selected, 0, n);
 
             return selected;
         }
@@ -96,13 +101,24 @@ namespace Program
         private Chromosome[] crossover(Chromosome[] parents)
         {
             //int?[,] route = new int?[2, parents[0].numPatients];
-            int?[] route;// = new int?[parents[0].numPatients];
+            //int?[] route;// = new int?[parents[0].numPatients];
             int nurseIndex;
+            int patient;
             for (int i = 0; i < parents.Length; i += 2)
             {
                 parents[i].updateNumNurses();
                 nurseIndex = random.Next(0, parents[i].numNurses);
-                route = parents[i].nursePaths[];
+
+                for (int j = 0; j < parents[i].numPatients; j++)
+                {
+                    if (parents[i].nursePaths[nurseIndex, j] == null)
+                        break;
+
+                    patient = (int)parents[i].nursePaths[nurseIndex, j];
+
+                    parents[i + 1]
+
+                }
 
             }
 

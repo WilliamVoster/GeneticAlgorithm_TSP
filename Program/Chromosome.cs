@@ -9,7 +9,7 @@ using System.Xml.Linq;
 
 namespace Program
 {
-    internal class Chromosome : IComparable<Chromosome>
+    internal class Chromosome : IComparable<Chromosome>, ICloneable
     {
         public int?[,] nursePaths { get; private set; }
         public double? fitness { get; set; }
@@ -21,6 +21,13 @@ namespace Program
             this.nursePaths = new int?[numNurses, numPatients];
             this.numNurses = numNurses;
             this.numPatients = numPatients;
+        }
+        private Chromosome(int numNurses, int numPatients, double? fitness, int?[,] nursePaths)
+        {
+            this.numNurses = numNurses;
+            this.numPatients = numPatients;
+            this.fitness = fitness;
+            this.nursePaths = nursePaths;
         }
 
         public void updateNumNurses() // updates number of nurses to reflect the current utilization of nurses, i.e. if not are all used
@@ -118,5 +125,11 @@ namespace Program
         {
             return ((double)fitness).CompareTo((double)other.fitness);
         }
+
+        public object Clone()
+        {
+            return new Chromosome(numNurses, numPatients, fitness, (int?[,])nursePaths.Clone());
+        }
+
     }
 }
