@@ -7,6 +7,12 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
+        <TextBox 
+            Name="ConsoleTextBox" 
+            IsReadOnly="True" 
+            VerticalScrollBarVisibility="Auto" 
+            HorizontalScrollBarVisibility="Auto">
+        </TextBox>
 
     </Grid>
 </Window>
