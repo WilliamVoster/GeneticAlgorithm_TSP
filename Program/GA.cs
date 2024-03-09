@@ -14,6 +14,7 @@ namespace Program
             string solutionDir = Directory.GetCurrentDirectory() + "\\..\\..\\..\\";
 
             TSP training_problem_0 = TSP.readJSON(solutionDir + "Data/train_0.json");
+            training_problem_0.saveClosestStops();
 
             GA geneticAlgorithm = new GA(training_problem_0, 100);
 
@@ -83,6 +84,7 @@ namespace Program
             for (int i = 0; i < n; i++)
             {
                 selected[i] = (Chromosome)population.population[i].Clone();
+                //selected[i].fitness = null;
             }
 
             //Chromosome[] populationCopy = (Chromosome[])population.population.Clone();
@@ -100,25 +102,54 @@ namespace Program
         
         private Chromosome[] crossover(Chromosome[] parents)
         {
+            // For some of the patients in nurse path x -> swap with same patients in parent 2's nurse path 
             //int?[,] route = new int?[2, parents[0].numPatients];
             //int?[] route;// = new int?[parents[0].numPatients];
-            int nurseIndex;
-            int patient;
+            // TODO reset fitness of modified!
+            int nurseIndex1;
+            int nurseIndex2;
+            int patient1;
+            int patient2;
+            int[] patients1 = new int[parents[0].numPatients];
+            int[] patients2 = new int[parents[0].numPatients];
             for (int i = 0; i < parents.Length; i += 2)
             {
                 parents[i].updateNumNurses();
-                nurseIndex = random.Next(0, parents[i].numNurses);
+                parents[i + 1].updateNumNurses();
+                nurseIndex1 = random.Next(0, parents[i].numNurses);
+                nurseIndex2 = random.Next(0, parents[i + 1].numNurses);
 
+                // Patients from one nurse in parent1 are deleted in parent2
                 for (int j = 0; j < parents[i].numPatients; j++)
                 {
-                    if (parents[i].nursePaths[nurseIndex, j] == null)
+                    if (parents[i].nursePaths[nurseIndex1, j] == null)
                         break;
 
-                    patient = (int)parents[i].nursePaths[nurseIndex, j];
+                    patient1 = (int)parents[i].nursePaths[nurseIndex1, j];
 
-                    parents[i + 1]
+                    parents[i + 1].deleteByValue(patient1);
+
+                    patients1[j] = patient1;
+                }
+
+                // Patients from one nurse in parent2 are deleted in parent1
+                for (int j = 0; j < parents[i + 1].numPatients; j++)
+                {
+                    if (parents[i + 1].nursePaths[nurseIndex2, j] == null)
+                        break;
+
+                    patient2 = (int)parents[i + 1].nursePaths[nurseIndex2, j];
+
+                    parents[i].deleteByValue(patient2);
+
+                    patients2[j] = patient2;
 
                 }
+
+                // For unvisited patients in parent find a nurse to visit them
+                parents[i].insertByDistance(patients1, problem.travel_times, problem.closestStops);
+                parents[i + 1].insertByDistance(patients2, problem.travel_times, problem.closestStops);
+                
 
             }
 
