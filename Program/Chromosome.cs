@@ -31,60 +31,116 @@ namespace Program
             this.nursePaths = nursePaths;
         }
 
-        public void insertByDistance(int[] patients, Double[,] travel_times, int[] closestStops)
+        public void insertByDistance(int[] patients, Double[,] travel_times)
         {
-            int closestStop;
-            HashSet<int> checkedStops;
+            int row = -1;
+            int col = -1;
+            int leftNode;
+            int? leftCol;
+            double leftOptionDistance;
+            int rightNode;
+            int? rightCol;
+            double rightOptionDistance;
+            double distance = Double.MaxValue;
+            int stopIndex;
             for (int i = 0; i < patients.Length; i++)
             {
-
-                closestStop = closestStops[patients[i]];
-
-                if (closestStop in patients)
-                {
-                checkedStops = new HashSet<int>(travel_times[4]);
-
-                    for (int j = 0; j < travel_times.GetLength(1); j++)
-                    {
-                        
-                    }
-                }
-
-
-
-
-            }
-
-
-
-
-            //// ______________________________________________________
-            double closest;
-            double distance;
-            for (int i = 0; i < patients.Length; i++)
-            {
-                closest = Double.MaxValue;
-                distance = 0.0;
-
-                int closestStop = closestStops[patients[i]];
 
                 for (int j = 0; j < nursePaths.GetLength(0); j++)
                 {
-                    if (nursePaths[j, 0] == null)
-                        break;
+                    if (nursePaths[j, 0] == null) break;
 
                     for (int k = 0; k < nursePaths.GetLength(1); k++)
                     {
-                        if (nursePaths[j, k] == null)
-                            break;
+                        if (nursePaths[j, k] == null) break;
 
-                        patients[i]; // to add
+                        if (nursePaths[j, k] == patients[i]) continue;
 
-                        distance += travel_times[j, closestStops[patients[i]]];
+                        if (travel_times[patients[i], (int)nursePaths[j, k]] < distance)
+                        {
+                            distance = travel_times[patients[i], (int)nursePaths[j, k]];
+                            row = j; 
+                            col = k;
+                        }
                     }
                 }
+                
+                if (col - 1 < 0)
+                {
+                    leftNode = 0;
+                    leftCol = null; // i.e. root, wich is not represented in nursePaths
+                }
+                else
+                {
+                    leftNode = (int)nursePaths[row, col - 1];
+                    leftCol = col - 1;
+                }
+                if (col + 1 > numPatients - 1)
+                {
+                    rightNode = 0;
+                    rightCol = null; // i.e. root, wich is not represented in nursePaths
+                }
+                else
+                {
+                    if (nursePaths[row, col + 1] == null)
+                    {
+                        rightNode = 0;
+                        rightCol = null; // i.e. root, wich is not represented in nursePaths
+                    }
+                    else
+                    {
+                        rightNode = (int)nursePaths[row, col + 1];
+                        rightCol = col + 1;
+                    }
+                }
+
+                leftOptionDistance = travel_times[leftNode, patients[i]];
+                leftOptionDistance += travel_times[patients[i], (int)nursePaths[row, col]];
+                leftOptionDistance -= travel_times[leftNode, (int)nursePaths[row, col]];
+
+                rightOptionDistance = travel_times[rightNode, patients[i]];
+                rightOptionDistance += travel_times[patients[i], (int)nursePaths[row, col]];
+                rightOptionDistance -= travel_times[rightNode, (int)nursePaths[row, col]];
+
+                if (leftOptionDistance < rightOptionDistance)
+                {
+                    stopIndex = leftCol == null ? 0 : (int)leftCol;
+                }
+                else
+                {
+                    // If right node is depot -> just append to end of nurse's path and go to next
+                    if (rightCol == null)
+                    {
+                        for (int j = 0; j < nursePaths.GetLength(1); j++)
+                        {
+                            if (nursePaths[row, j] == null)
+                            {
+                                nursePaths[row, j] = patients[i];
+                                break;
+                            }
+                        }
+                        continue;
+                    }
+
+                    stopIndex = (int)rightCol;
+                }
+
+                // Shift patients to the right within the array/path
+                // which gives a space for the new patient to be inserted
+                for (int j = numPatients - 1; j <= stopIndex; j--)
+                {
+                    if (nursePaths[row, j - 1] == null) continue;
+
+                    nursePaths[row, j] = nursePaths[row, j - 1];
+                }
+
+                nursePaths[row, stopIndex] = patients[i];
+                
+
             }
+
         }
+
 
         public void deleteByValue(int patient)
         {

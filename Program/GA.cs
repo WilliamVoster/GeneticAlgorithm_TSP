@@ -14,7 +14,6 @@ namespace Program
             string solutionDir = Directory.GetCurrentDirectory() + "\\..\\..\\..\\";
 
             TSP training_problem_0 = TSP.readJSON(solutionDir + "Data/train_0.json");
-            training_problem_0.saveClosestStops();
 
             GA geneticAlgorithm = new GA(training_problem_0, 100);
 
@@ -147,8 +146,8 @@ namespace Program
                 }
 
                 // For unvisited patients in parent find a nurse to visit them
-                parents[i].insertByDistance(patients1, problem.travel_times, problem.closestStops);
-                parents[i + 1].insertByDistance(patients2, problem.travel_times, problem.closestStops);
+                parents[i].insertByDistance(patients1, problem.travel_times);
+                parents[i + 1].insertByDistance(patients2, problem.travel_times);
                 
 
             }
