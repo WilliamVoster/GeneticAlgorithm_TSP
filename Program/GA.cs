@@ -13,20 +13,14 @@ namespace Program
 
             string solutionDir = Directory.GetCurrentDirectory() + "\\..\\..\\..\\";
 
+            Visualize visualize = new Visualize(solutionDir + "/Program/plotting.py");
+            visualize.Run();
+
             TSP training_problem_0 = TSP.readJSON(solutionDir + "Data/train_0.json");
 
             GA geneticAlgorithm = new GA(training_problem_0, 100);
-
             geneticAlgorithm.run();
 
-            //Population population = new Population(50, problem);
-
-            //population.calcFitness();
-
-            // TODO remember to set fitness to null on chromosome if mutate/change genome!!
-
-            Console.WriteLine("test");
-            //Console.ReadLine();
 
 
             //TODO:
@@ -76,7 +70,7 @@ namespace Program
 
 
                 //Mutation
-                // TODO: implement
+                // TODO: implement, reset fitness (maybe?)
                 children = mutation(children);
 
 

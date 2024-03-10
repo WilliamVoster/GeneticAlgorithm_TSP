@@ -8,6 +8,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{89D8120D-476F-40A1-85BC-7FC68C7C7F79}"
 	ProjectSection(SolutionItems) = preProject
 		..\.gitignore = ..\.gitignore
+		plotting.py = plotting.py
 	EndProjectSection
 EndProject
 Global
