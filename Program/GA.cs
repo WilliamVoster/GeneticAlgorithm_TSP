@@ -35,11 +35,12 @@ namespace Program
         int numIterations;
         Population population;
         Random random;
+        int seed = 1;
         public GA(TSP problem, int numIterations) 
         {
             this.problem = problem;
             this.numIterations = numIterations; 
-            this.random = new Random();
+            this.random = new Random(seed);
         }
 
         public void run()
@@ -50,10 +51,11 @@ namespace Program
             population.inintializeEvenPatientSplit();
 
             problem.calcAvgNumPatientsPerNurse();
+            population.calcFitness();
             int numParents = 2;
             for (int i = 0; i < numIterations; i++)
             {
-                population.calcFitness();
+                //population.calcFitness(); // all new added children have calculated fitnesses
                 population.sort();
 
                 //Parent Selection
@@ -63,12 +65,14 @@ namespace Program
                 //Crossover
                 Chromosome[] children = crossover(parents);
 
-                //Mutatuon
-                // TODO, remember to set child fitness = null
+
+                //Mutation
+                // TODO: implement
+                children = mutation(children);
 
 
                 //Offspring Selection
-                offspringSelection_HammingDistanceCrowding(children, parents, 5, 0.3);
+                offspringSelection_HammingDistanceCrowding(children, parents, 5, 1.0);
 
             }
 
@@ -80,14 +84,6 @@ namespace Program
         {
             Chromosome[] selected = new Chromosome[n];
 
-            //for (int i = 0; i < n; i++)
-            //{
-            //    selected[i] = population.population[i];
-            //    //selected[i].fitness = null;
-            //}
-
-            //Chromosome[] populationCopy = (Chromosome[])population.population.Clone();
-
             Array.Copy(population.population, 0, selected, 0, n);
 
             return selected;
@@ -97,7 +93,6 @@ namespace Program
         {
             
         }
-
         
         private Chromosome[] crossover(Chromosome[] parents)
         {
@@ -119,18 +114,17 @@ namespace Program
             {
                 children[i].updateNumNurses();
                 children[i + 1].updateNumNurses();
-                nurseIndex1 = random.Next(0, children[i].numNurses);
-                nurseIndex2 = random.Next(0, children[i + 1].numNurses);
+                nurseIndex1 = children[i].getNextAvailableNurse(random.Next(0, children[i].numNurses));
+                nurseIndex2 = children[i + 1].getNextAvailableNurse(random.Next(0, children[i + 1].numNurses));
 
                 // Patients from one nurse in parent1 are deleted in parent2
                 for (int j = 0; j < children[i].numPatients; j++)
                 {
-                    if (children[i].nursePaths[nurseIndex1, j] == null)
-                        break;
+                    if (children[i].nursePaths[nurseIndex1, j] == null) break;
 
                     patient1 = (int)children[i].nursePaths[nurseIndex1, j];
 
-                    children[i + 1].deleteByValue(patient1);
+                    //children[i + 1].deleteByValue(patient1);
 
                     patients1[j] = patient1;
                 }
@@ -138,20 +132,29 @@ namespace Program
                 // Patients from one nurse in parent2 are deleted in parent1
                 for (int j = 0; j < children[i + 1].numPatients; j++)
                 {
-                    if (children[i + 1].nursePaths[nurseIndex2, j] == null)
-                        break;
+                    if (children[i + 1].nursePaths[nurseIndex2, j] == null) break;
 
                     patient2 = (int)children[i + 1].nursePaths[nurseIndex2, j];
 
-                    children[i].deleteByValue(patient2);
+                    //children[i].deleteByValue(patient2);
 
                     patients2[j] = patient2;
 
                 }
+                for (int j = 0;j < patients1.Length; j++)
+                {
+                    if (patients1[j] == null) break;
+                    children[i + 1].deleteByValue((int)patients1[j]);
+                }
+                for (int j = 0; j < patients2.Length; j++)
+                {
+                    if (patients2[j] == null) break;
+                    children[i].deleteByValue((int)patients2[j]);
+                }
 
                 // For unvisited patients in parent find a nurse to visit them
-                children[i].insertByDistance(patients1, problem.travel_times);
-                children[i + 1].insertByDistance(patients2, problem.travel_times);
+                children[i].insertByDistance(patients2, problem.travel_times);
+                children[i + 1].insertByDistance(patients1, problem.travel_times);
 
                 children[i].fitness = null;
                 children[i + 1].fitness = null;
@@ -165,14 +168,22 @@ namespace Program
         {
 
         }
+
+        private Chromosome[] mutation(Chromosome[] children) 
+        {
+
+            return children;
+        }
         
-        private void offspringSelection_HammingDistanceCrowding(Chromosome[] children, Chromosome[] parents, int numIndividualsToComapreDistance, double crowdingWeight)
+        private void offspringSelection_HammingDistanceCrowding(
+            Chromosome[] children, Chromosome[] parents, int numIndividualsToComapreDistance, double crowdingWeight)
         {
             // compare "distance" or degree of similarity between top x individuals in population
             // only needs to be different from the good solutions to avoid premature convergance
             // might not be as wide of a search space as if compared distance to whole population
 
             // replaces bottom y individuals from population where y = number of children
+            // if and only if children are better than parents, in terms of distance-weighted fitness measure
 
             double diversity;
             int sumChildDistance;
@@ -180,21 +191,19 @@ namespace Program
             double childWeightedFitness;
             double parentWeightedFitness;
 
-            for (int i = 0; i <= children.Length; i++) 
+            for (int i = 0; i < children.Length; i++) 
             {
                 sumChildDistance = 0;
                 sumParentDistance = 0;
                 for (int j = 0; j <= numIndividualsToComapreDistance; j++)
                 {
-                    for (int k = 0; i < children[i].numNurses; k++)
+                    for (int k = 0; k < children[i].nursePaths.GetLength(0); k++)
                     {
-                        if (children[i].nursePaths[k, 0] == null)
-                            break;
+                        if (children[i].nursePaths[k, 0] == null) continue;
 
-                        for (int l = 0; l <= children[i].numPatients; l++)
+                        for (int l = 0; l < children[i].nursePaths.GetLength(1); l++)
                         {
-                            if (children[i].nursePaths[k, l] == null)
-                                break;
+                            if (children[i].nursePaths[k, l] == null) break;
 
                             if (children[i].nursePaths[k, l] != population.population[j].nursePaths[k, l])
                                 sumChildDistance++;
@@ -206,12 +215,12 @@ namespace Program
                     }
                 }
 
-                childWeightedFitness = children[i].calcFitness(problem) + sumChildDistance / numIndividualsToComapreDistance * crowdingWeight;
-                parentWeightedFitness = parents[i].calcFitness(problem) + sumParentDistance / numIndividualsToComapreDistance * crowdingWeight;
+                childWeightedFitness = children[i].calcFitness(problem) - sumChildDistance / numIndividualsToComapreDistance * crowdingWeight;
+                parentWeightedFitness = parents[i].calcFitness(problem) - sumParentDistance / numIndividualsToComapreDistance * crowdingWeight;
 
                 if (childWeightedFitness < parentWeightedFitness)
                 {
-                    population.population[-i - 1] = children[i];
+                    population.population[population.population.Length - 1 - i] = children[i];
                 }
             }
 

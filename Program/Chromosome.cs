@@ -49,7 +49,7 @@ namespace Program
 
                 for (int j = 0; j < nursePaths.GetLength(0); j++)
                 {
-                    if (nursePaths[j, 0] == null) break;
+                    if (nursePaths[j, 0] == null) continue;
 
                     for (int k = 0; k < nursePaths.GetLength(1); k++)
                     {
@@ -128,7 +128,7 @@ namespace Program
 
                 // Shift patients to the right within the array/path
                 // which gives a space for the new patient to be inserted
-                for (int j = numPatients - 1; j <= stopIndex; j--)
+                for (int j = numPatients - 1; j > stopIndex; j--)
                 {
                     if (nursePaths[row, j - 1] == null) continue;
 
@@ -146,6 +146,7 @@ namespace Program
         {
             for (int i = 0; i < nursePaths.GetLength(0); i++)
             {
+                if (nursePaths[i, 0] == null) continue;
                 for (int j = 0; j < nursePaths.GetLength(1); j++)
                 {
                     if (nursePaths[i, j] == null)
@@ -169,15 +170,20 @@ namespace Program
 
         public void updateNumNurses() // updates number of nurses to reflect the current utilization of nurses, i.e. if not are all used
         {
+            numNurses = 0;
             for (int i = 0; i < nursePaths.GetLength(0); i++) 
             {
-                if (nursePaths[i, 0] == null)
-                {
-                    numNurses = i;
-                    return;
-                }
+                if (nursePaths[i, 0] != null)
+                    numNurses++;
             }
             numNurses = nursePaths.GetLength(0);
+        }
+
+        public int getNextAvailableNurse(int nurse)
+        {
+            if (nursePaths[nurse, 0] != null) return nurse;
+
+            return getNextAvailableNurse((nurse + 1) % (numNurses - 1));
         }
         
         public override bool Equals(object obj)
@@ -226,8 +232,7 @@ namespace Program
 
         public double calcFitness(TSP problem)
         {
-            if (fitness != null)
-                return (double)fitness;
+            if (fitness != null) return (double)fitness;
 
             fitness = 0.0;
             int previousLocation = 0;   // Starts at depot
@@ -235,13 +240,11 @@ namespace Program
 
             for (int i = 0;i < numNurses; i++)
             {
-                if (nursePaths[i, 0] == null)
-                    break;
+                if (nursePaths[i, 0] == null) continue;
 
                 for (int j = 0;j < numPatients; j++)
                 {
-                    if (nursePaths[i, j] == null)
-                        break;
+                    if (nursePaths[i, j] == null) break;
 
                     currentLocation = (int)nursePaths[i, j] - 1; // -1 since patientID start on 1, not 0
 
@@ -254,6 +257,9 @@ namespace Program
 
             // Add distance travelled for route back to depot
             fitness += problem.travel_times[previousLocation, 0];
+
+            if (fitness == 0.0)
+                Console.WriteLine("how??");
 
             return (double)fitness;
         }
