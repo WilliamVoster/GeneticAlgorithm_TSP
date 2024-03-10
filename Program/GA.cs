@@ -80,15 +80,15 @@ namespace Program
         {
             Chromosome[] selected = new Chromosome[n];
 
-            for (int i = 0; i < n; i++)
-            {
-                selected[i] = (Chromosome)population.population[i].Clone();
-                //selected[i].fitness = null;
-            }
+            //for (int i = 0; i < n; i++)
+            //{
+            //    selected[i] = population.population[i];
+            //    //selected[i].fitness = null;
+            //}
 
             //Chromosome[] populationCopy = (Chromosome[])population.population.Clone();
 
-            //Array.Copy(populationCopy, 0, selected, 0, n);
+            Array.Copy(population.population, 0, selected, 0, n);
 
             return selected;
         }
@@ -101,58 +101,64 @@ namespace Program
         
         private Chromosome[] crossover(Chromosome[] parents)
         {
-            // For some of the patients in nurse path x -> swap with same patients in parent 2's nurse path 
-            //int?[,] route = new int?[2, parents[0].numPatients];
-            //int?[] route;// = new int?[parents[0].numPatients];
-            // TODO reset fitness of modified!
             int nurseIndex1;
             int nurseIndex2;
             int patient1;
             int patient2;
-            int[] patients1 = new int[parents[0].numPatients];
-            int[] patients2 = new int[parents[0].numPatients];
-            for (int i = 0; i < parents.Length; i += 2)
+            int?[] patients1 = new int?[parents[0].numPatients];
+            int?[] patients2 = new int?[parents[0].numPatients];
+            Chromosome[] children = new Chromosome[parents.Length];
+
+            // Make copies of parents, children, and modify them instead
+            for (int i = 0; i < parents.Length; i++)
             {
-                parents[i].updateNumNurses();
-                parents[i + 1].updateNumNurses();
-                nurseIndex1 = random.Next(0, parents[i].numNurses);
-                nurseIndex2 = random.Next(0, parents[i + 1].numNurses);
+                children[i] = (Chromosome)parents[i].Clone();
+            }
+
+            for (int i = 0; i < children.Length; i += 2)
+            {
+                children[i].updateNumNurses();
+                children[i + 1].updateNumNurses();
+                nurseIndex1 = random.Next(0, children[i].numNurses);
+                nurseIndex2 = random.Next(0, children[i + 1].numNurses);
 
                 // Patients from one nurse in parent1 are deleted in parent2
-                for (int j = 0; j < parents[i].numPatients; j++)
+                for (int j = 0; j < children[i].numPatients; j++)
                 {
-                    if (parents[i].nursePaths[nurseIndex1, j] == null)
+                    if (children[i].nursePaths[nurseIndex1, j] == null)
                         break;
 
-                    patient1 = (int)parents[i].nursePaths[nurseIndex1, j];
+                    patient1 = (int)children[i].nursePaths[nurseIndex1, j];
 
-                    parents[i + 1].deleteByValue(patient1);
+                    children[i + 1].deleteByValue(patient1);
 
                     patients1[j] = patient1;
                 }
 
                 // Patients from one nurse in parent2 are deleted in parent1
-                for (int j = 0; j < parents[i + 1].numPatients; j++)
+                for (int j = 0; j < children[i + 1].numPatients; j++)
                 {
-                    if (parents[i + 1].nursePaths[nurseIndex2, j] == null)
+                    if (children[i + 1].nursePaths[nurseIndex2, j] == null)
                         break;
 
-                    patient2 = (int)parents[i + 1].nursePaths[nurseIndex2, j];
+                    patient2 = (int)children[i + 1].nursePaths[nurseIndex2, j];
 
-                    parents[i].deleteByValue(patient2);
+                    children[i].deleteByValue(patient2);
 
                     patients2[j] = patient2;
 
                 }
 
                 // For unvisited patients in parent find a nurse to visit them
-                parents[i].insertByDistance(patients1, problem.travel_times);
-                parents[i + 1].insertByDistance(patients2, problem.travel_times);
-                
+                children[i].insertByDistance(patients1, problem.travel_times);
+                children[i + 1].insertByDistance(patients2, problem.travel_times);
+
+                children[i].fitness = null;
+                children[i + 1].fitness = null;
 
             }
 
-            return new Chromosome[parents.Length];
+            return children;
         }
 
         private void clusteringKMeans()

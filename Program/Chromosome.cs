@@ -31,7 +31,7 @@ namespace Program
             this.nursePaths = nursePaths;
         }
 
-        public void insertByDistance(int[] patients, Double[,] travel_times)
+        public void insertByDistance(int?[] patients, Double[,] travel_times)
         {
             int row = -1;
             int col = -1;
@@ -45,6 +45,7 @@ namespace Program
             int stopIndex;
             for (int i = 0; i < patients.Length; i++)
             {
+                if (patients[i] == null) break;
 
                 for (int j = 0; j < nursePaths.GetLength(0); j++)
                 {
@@ -56,9 +57,9 @@ namespace Program
 
                         if (nursePaths[j, k] == patients[i]) continue;
 
-                        if (travel_times[patients[i], (int)nursePaths[j, k]] < distance)
+                        if (travel_times[(int)patients[i], (int)nursePaths[j, k]] < distance)
                         {
-                            distance = travel_times[patients[i], (int)nursePaths[j, k]];
+                            distance = travel_times[(int)patients[i], (int)nursePaths[j, k]];
                             row = j; 
                             col = k;
                         }
@@ -94,12 +95,12 @@ namespace Program
                     }
                 }
 
-                leftOptionDistance = travel_times[leftNode, patients[i]];
-                leftOptionDistance += travel_times[patients[i], (int)nursePaths[row, col]];
+                leftOptionDistance = travel_times[leftNode, (int)patients[i]];
+                leftOptionDistance += travel_times[(int)patients[i], (int)nursePaths[row, col]];
                 leftOptionDistance -= travel_times[leftNode, (int)nursePaths[row, col]];
 
-                rightOptionDistance = travel_times[rightNode, patients[i]];
-                rightOptionDistance += travel_times[patients[i], (int)nursePaths[row, col]];
+                rightOptionDistance = travel_times[rightNode, (int)patients[i]];
+                rightOptionDistance += travel_times[(int)patients[i], (int)nursePaths[row, col]];
                 rightOptionDistance -= travel_times[rightNode, (int)nursePaths[row, col]];
 
                 if (leftOptionDistance < rightOptionDistance)
@@ -140,7 +141,6 @@ namespace Program
             }
 
         }
-
 
         public void deleteByValue(int patient)
         {
