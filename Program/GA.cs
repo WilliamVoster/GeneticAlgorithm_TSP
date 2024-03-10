@@ -29,6 +29,15 @@ namespace Program
             //Console.ReadLine();
 
 
+            //TODO:
+            // Fix fitness function to incorporate constraints
+            // calcfitness() on population is faster than calling calc on every new child
+            // better parameters for num children to create
+            // implement mutation
+            // better seleciton
+            // visualization, in python?
+
+
         }
 
         TSP problem;
