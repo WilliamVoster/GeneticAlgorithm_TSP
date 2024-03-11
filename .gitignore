@@ -62,6 +62,7 @@ dkms.conf
 Data/
 
 **packages/
+**plottingData/
 
 **code_structure.cs
 

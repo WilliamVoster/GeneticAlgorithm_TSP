@@ -51,7 +51,7 @@
     <Compile Include="GA.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TSP.cs" />
-    <Compile Include="Visualize.cs" />
+    <Compile Include="Visualizer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

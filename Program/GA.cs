@@ -13,12 +13,15 @@ namespace Program
 
             string solutionDir = Directory.GetCurrentDirectory() + "\\..\\..\\..\\";
 
-            Visualize visualize = new Visualize(solutionDir + "/Program/plotting.py");
-            visualize.Run();
-
             TSP training_problem_0 = TSP.readJSON(solutionDir + "Data/train_0.json");
 
-            GA geneticAlgorithm = new GA(training_problem_0, 100);
+            Visualizer visualizer = new Visualizer(
+                training_problem_0,
+                solutionDir + "/Program/plotting.py", 
+                solutionDir + "/Program/plottingData/chromosome.json");
+
+
+            GA geneticAlgorithm = new GA(training_problem_0, 100, visualizer);
             geneticAlgorithm.run();
 
 
@@ -35,15 +38,17 @@ namespace Program
         }
 
         TSP problem;
+        Visualizer visualizer;
         int numIterations;
         Population population;
         Random random;
         int seed = 1;
-        public GA(TSP problem, int numIterations) 
+        public GA(TSP problem, int numIterations, Visualizer visualizer) 
         {
             this.problem = problem;
             this.numIterations = numIterations; 
             this.random = new Random(seed);
+            this.visualizer = visualizer;
         }
 
         public void run()
@@ -61,6 +66,9 @@ namespace Program
                 //population.calcFitness(); // all new added children have calculated fitnesses
                 population.sort();
 
+                //TEst
+                visualizer.visualize(population.population[0]);
+
                 //Parent Selection
                 Chromosome[] parents = elitistSelection(numParents); // TODO: instead of copying and creating new parents, just look at the original individuals in population
 
@@ -76,6 +84,7 @@ namespace Program
 
                 //Offspring Selection
                 offspringSelection_HammingDistanceCrowding(children, parents, 5, 1.0);
+
 
             }
 

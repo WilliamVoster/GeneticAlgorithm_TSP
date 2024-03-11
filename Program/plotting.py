@@ -1,83 +1,119 @@
 
-
+import sys
+import json
 import networkx as nx
 import matplotlib.pyplot as plt
 
-G = nx.Graph()
-G.add_edges_from(
-    [
-        (1,2), 
-        (2,3), 
-        (1,3), 
-        (1,4) 
+
+def show_plot(data):
+    
+    colors = [
+        '#FF6347',  # Tomato
+        # '#FF4500',  # OrangeRed
+        '#8B4513',  # SaddleBrown
+        '#FFA500',  # Orange
+        '#FFD700',  # Gold
+        '#FF69B4',  # HotPink
+        '#FF1493',  # DeepPink
+        # '#FFB6C1',  # LightPink
+        '#2E8B57',  # SeaGreen
+        '#FFC0CB',  # Pink
+        '#DA70D6',  # Orchid
+        # '#BA55D3',  # MediumOrchid
+        '#CD853F',  # Peru
+        '#8A2BE2',  # BlueViolet
+        # '#6A5ACD',  # SlateBlue
+        '#A0522D',  # Sienna
+        '#483D8B',  # DarkSlateBlue
+        '#4169E1',  # RoyalBlue
+        # '#6495ED',  # CornflowerBlue
+        '#BDB76B',  # DarkKhaki
+        '#87CEEB',  # SkyBlue
+        # '#00BFFF',  # DeepSkyBlue
+        '#2F4F4F',  # DarkSlateGray
+        '#1E90FF',  # DodgerBlue
+        '#87CEFA',  # LightSkyBlue
+        '#4682B4',  # SteelBlue
+        '#5F9EA0',  # CadetBlue
+        '#7FFF00',  # Chartreuse
+        '#32CD32',  # LimeGreen
+        '#228B22',  # ForestGreen
+        '#008000'   # Green
     ]
-)
-positions = { 
-    1: (20, 30), 
-    2: (40, 30), 
-    3: (30, 10),
-    4: (0, 40)
-} 
 
-positions2 = { 
-    1: (25, 35), 
-    2: (45, 35), 
-    3: (35, 15),
-    4: (5, 45)
-} 
+    # fitness = chromosome["fitness"]
+    edges = data["Item1"]
+    positions_list = data["Item2"]
+    positions_dict = {}
 
-# nx.draw_networkx(G, pos=pos)
+    edges = [(x[0], x[1]) for x in edges]
 
-nx.draw_networkx_nodes(G, pos=positions, node_color="black", node_size=50)
-nx.draw_networkx_edges(G, pos=positions, edge_color="blue", width=0.5)
-nx.draw_networkx_edges(G, pos=positions2, edge_color="red", width=0.5)
-nx.draw_networkx_labels(G, pos=positions, font_size=6, font_color="white") # TODO remove, instructions dont use labels
+    G = nx.Graph()
 
-plt.subplots_adjust(left=0.0, right=1.0, bottom=0.0, top=1.0)
+    edge_colors = {}
+    edge_index = 0
+    for i, positions in enumerate(positions_list):
 
-plt.show()
+        if positions == None: continue
 
+        for j, patient in enumerate(positions):
+            (x, y) = edges[edge_index]
 
+            if x > y and (x == 0 or y == 0): # for some reason G.edges() sorts only when one of the values are 0
+                edge_colors[(y, x)] = colors[i]
+            else:
+                edge_colors[(x, y)] = colors[i]
 
+            G.add_edge(x, y)
 
-'''
-# ///  Test from copilot
+            positions_dict[int(patient)] = (positions[patient][0], positions[patient][1])
+
+            edge_index += 1
 
 
-import matplotlib.pyplot as plt
-import networkx as nx
-import math
+    edge_color_list = []
+    for edge in list(G.edges()):
+        try:
+            edge_color_list.append(edge_colors[edge])
+        except:
+            print("HERE::", edge, type(edge))
+            print(G.edges())
+            print("edge colors: ", edge_colors)
+            print("edge_color_list: ", edge_color_list)
+            exit(1)
 
-# Create a graph object
-G = nx.Graph()
+        
+    plt.figure(figsize=(12, 6))
+    
+    nx.draw(
+        G,
+        pos=positions_dict,
+        with_labels=True, 
+        node_color='skyblue', 
+        edge_color=edge_color_list, 
+        width=2.0, 
+        font_size=6,
+        node_size=50)
+    
+    plt.subplots_adjust(left=0.0, right=1.0, bottom=0.0, top=1.0)
+    plt.show()
 
-# Add nodes with positions (these could be your nurse and patient locations)
-positions = {0: (0, 0), 1: (1, 2), 2: (2, 4), 3: (-1, 3), 4: (-2, -3)}
 
-G.add_nodes_from(positions.keys())
+if __name__ == "__main__":
 
-# Add edges between nodes (these could represent the paths)
-edges = [(0, 1), (0, 2), (0, 3), (0, 4)]
+    try:
+        chromosome_json_file = sys.argv[1]
+    except:
+        print("Could not load file ")
+        exit(1)
 
-# Calculate distances between nodes as edge weights
-for i in range(len(positions)):
-    for j in range(i + 1, len(positions)):
-        dist = math.hypot(positions[i][0] - positions[j][0], positions[i][1] - positions[j][1])
-        G.add_edge(i, j, weight=dist)
+    try:
+        with open(chromosome_json_file, 'r') as f:
+            data = json.load(f)
+    except:
+        print("Could not parse json")
+        exit(1)
 
-# Solve TSP using Christofides algorithm
-cycle = nx.approximation.traveling_salesman_problem.christofides(G, weight="weight")
-edge_list = list(nx.utils.pairwise(cycle))
 
-# Draw the graph
-plt.figure(figsize=(8, 6))
-nx.draw_networkx_nodes(G, pos=positions, node_color="black", node_size=200)
-nx.draw_networkx_edges(G, pos=positions, edge_color="blue", width=0.5)
-nx.draw_networkx_edges(G, pos=positions, edgelist=edge_list, edge_color="red", width=3)
-nx.draw_networkx_labels(G, pos=positions, font_size=10, font_color="white")
+    show_plot(data)
 
-plt.title("Nurse Routes in TSP")
-plt.axis("off")
-plt.show()
-
-'''
