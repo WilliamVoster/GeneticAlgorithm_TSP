@@ -24,7 +24,7 @@ namespace Program
             this.fitnessLookUp = new Dictionary<Chromosome, double>();
         }
 
-        public void inintializeEvenPatientSplit()
+        public void inintializeEvenPatientSplit(bool shuffled = true)
         {
             int numNurses = problem.nbr_nurses;
             int numPatients = problem.patients.Count;
@@ -36,7 +36,12 @@ namespace Program
 
                 int nurseID = 0;
                 int countPatients = 0;
-                foreach (int patientID in problem.patients.Keys)
+                List<int> patientsList = problem.patients.Keys.ToList();
+
+                if (shuffled)
+                    patientsList = Population.shuffleList(patientsList);
+
+                foreach (int patientID in patientsList)
                 {
                     chromosome.nursePaths[nurseID, countPatients] = patientID;
 
@@ -51,6 +56,23 @@ namespace Program
                 }
                 population[i] = chromosome;
             }
+        }
+
+        private static List<int> shuffleList(List<int> list)
+        {
+            Random random = new Random();
+            int n = list.Count;
+            int k;
+            int value;
+            while (n > 0)
+            {
+                k = random.Next(n);
+                value = list[k];
+                list[k] = list[n - 1];
+                list[n - 1] = value;
+                n--;
+            }
+            return list;
         }
 
         public void calcFitness()

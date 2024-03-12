@@ -1,7 +1,9 @@
 ﻿using Newtonsoft.Json.Bson;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 
 
 namespace Program
@@ -21,7 +23,7 @@ namespace Program
                 solutionDir + "/Program/plottingData/chromosome.json");
 
 
-            GA geneticAlgorithm = new GA(training_problem_0, 100, visualizer);
+            GA geneticAlgorithm = new GA(training_problem_0, 50, visualizer);
             geneticAlgorithm.run();
 
 
@@ -33,6 +35,7 @@ namespace Program
             // implement mutation
             // better seleciton
             // visualization, in python?
+            // add big dot for the depot in visualization
 
 
         }
@@ -56,7 +59,7 @@ namespace Program
 
             //Initialization
             population = new Population(50, problem);
-            population.inintializeEvenPatientSplit();
+            population.inintializeEvenPatientSplit(false);
 
             problem.calcAvgNumPatientsPerNurse();
             population.calcFitness();
@@ -66,8 +69,9 @@ namespace Program
                 //population.calcFitness(); // all new added children have calculated fitnesses
                 population.sort();
 
-                //TEst
-                visualizer.visualize(population.population[0]);
+                if (i % 1 == 0 && i != 0)
+                    Console.WriteLine("Generation:  " + i + "\tFitness: " + population.population[0].fitness);
+
 
                 //Parent Selection
                 Chromosome[] parents = elitistSelection(numParents); // TODO: instead of copying and creating new parents, just look at the original individuals in population
@@ -86,6 +90,8 @@ namespace Program
                 offspringSelection_HammingDistanceCrowding(children, parents, 5, 1.0);
 
 
+                if(i == numIterations - 1)
+                    visualizer.visualize(population.population[0]);
             }
 
             //Termination
@@ -237,10 +243,10 @@ namespace Program
             }
 
         }
-    
 
-    
-    
+
+        
+
     }
 
 

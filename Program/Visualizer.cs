@@ -21,11 +21,6 @@ namespace Program
             this.jsonFilePath = jsonFilePath;
         }
 
-        //private class EdgeCollection
-        //{
-
-        //}
-
         private (List<int[]>, Dictionary<int, int[]>[]) calcEdges(Chromosome chromosome)
         {
             //int numEdges;
@@ -40,7 +35,6 @@ namespace Program
                 if (chromosome.nursePaths[i, 0] == null) continue;
 
                 // Add depot location
-                //numEdges = 0;
                 edge = new int[] { 0, 0 };
                 coord = new int[] { problem.depot.x_coord, problem.depot.y_coord };
                 Dictionary<int, int[]> positions = new Dictionary<int, int[]>();
@@ -51,22 +45,14 @@ namespace Program
                 {
                     if (chromosome.nursePaths[i, j] == null) break;
 
-                    //numEdges++;
-
-                    //edge[0] = edge[1];
-                    //edge[1] = (int)chromosome.nursePaths[i, j];
                     edge = new int[] { edge[1], (int)chromosome.nursePaths[i, j] };
                     edges.Add(edge);
 
-                    //coord[0] = problem.patients[edge[1]].x_coord;
-                    //coord[1] = problem.patients[edge[1]].y_coord;
                     coord = new int[] { problem.patients[edge[1]].x_coord, problem.patients[edge[1]].y_coord };
                     positionsList[i].Add((int)chromosome.nursePaths[i, j], coord);
                 }
 
                 // Add edge back to depot again
-                //edge[0] = edge[1];
-                //edge[1] = 0;
                 edge = new int[] { edge[1], 0 };
                 edges.Add(edge);
             }

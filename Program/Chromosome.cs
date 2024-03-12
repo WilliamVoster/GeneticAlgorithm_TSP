@@ -230,36 +230,77 @@ namespace Program
             }
         }
 
-        public double calcFitness(TSP problem)
+        public double calcFitness(TSP problem, bool withHeuristic = true)
         {
             if (fitness != null) return (double)fitness;
 
-            fitness = 0.0;
-            int previousLocation = 0;   // Starts at depot
-            int currentLocation;
 
-            for (int i = 0;i < numNurses; i++)
+            // Fitness factors
+            // distance travelled
+            // how much each nurse over capacity
+            // count num too late at patient / depot
+            // count num too early at patient
+
+            fitness = 0.0;
+            int previousLocation;
+            int currentLocation;
+            int usedCapacity;
+            int totalCapacityViolation = 0;
+            int countTooLate = 0;
+            double sumTooEarly = 0;
+            double totalDrivingTime = 0.0;
+            double totalRouteTime = 0.0;
+            Patient patient;
+
+            for (int i = 0; i < numNurses; i++)
             {
                 if (nursePaths[i, 0] == null) continue;
 
-                for (int j = 0;j < numPatients; j++)
+                previousLocation = 0; // Starts at depot
+                totalRouteTime = 0; // Different for each nurse route
+                usedCapacity = 0;
+
+                for (int j = 0; j < numPatients; j++)
                 {
                     if (nursePaths[i, j] == null) break;
 
-                    currentLocation = (int)nursePaths[i, j] - 1; // -1 since patientID start on 1, not 0
+                    currentLocation = (int)nursePaths[i, j];
+                    patient = problem.patients[currentLocation];
 
-                    fitness += problem.travel_times[previousLocation, currentLocation];
+                    totalDrivingTime += problem.travel_times[previousLocation, currentLocation];
+                    totalRouteTime += problem.travel_times[previousLocation, currentLocation];
+                    usedCapacity += patient.demand;
+
+                    if (usedCapacity > problem.capacity_nurse)
+                        totalCapacityViolation += usedCapacity - problem.capacity_nurse;
+
+                    if (totalRouteTime > patient.start_time)
+                        countTooLate += 1;
+
+                    if (totalRouteTime < patient.start_time)
+                        sumTooEarly += patient.start_time - totalRouteTime;
+
+                    totalRouteTime += patient.care_time;
 
                     previousLocation = currentLocation;
                 }
-                
+
+                // Travel back to the depot at the end of each route
+                totalDrivingTime += problem.travel_times[previousLocation, 0];
+                totalRouteTime += problem.travel_times[previousLocation, 0];
+
+                if (totalRouteTime > problem.depot.return_time)
+                    countTooLate += 1;
             }
 
-            // Add distance travelled for route back to depot
-            fitness += problem.travel_times[previousLocation, 0];
+            fitness = totalDrivingTime;
 
-            if (fitness == 0.0)
-                Console.WriteLine("how??");
+            if (withHeuristic)
+            {
+                fitness += 100  * countTooLate;
+                fitness += 10.0 * Math.Pow(totalCapacityViolation, 2);
+                fitness += 0.1  * Math.Pow(sumTooEarly, 2);
+            }
 
             return (double)fitness;
         }
