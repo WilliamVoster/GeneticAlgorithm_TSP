@@ -75,25 +75,34 @@ namespace Program
             return list;
         }
 
-        public void calcFitness()
+        public double calcFitness()
         {
             double fitness;
+            double? sumFitness = 0;
             for (int i = 0; i < population.Length; i++)
             {
                 if (population[i].fitness != null)
+                {
+                    sumFitness += population[i].fitness;
                     continue;
+                }
 
                 if (fitnessLookUp.TryGetValue(population[i], out fitness))
                 {
                     population[i].fitness = fitness;
+                    sumFitness += fitness;
                     continue;
                 }
 
                 fitness = population[i].calcFitness(problem);
 
                 fitnessLookUp[population[i]] = fitness;
+                sumFitness += fitness;
 
             }
+
+            return (double)sumFitness;
+
         }
         
         public void sort()

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -12,6 +13,12 @@ namespace Program
     {
         public static void Main(string[] args)
         {
+            ////Test
+            //int l;
+            //for (l = 0; l < 10; l++)
+            //    if (l == 2) break;
+            //Console.WriteLine(l);
+            //return;
 
             string solutionDir = Directory.GetCurrentDirectory() + "\\..\\..\\..\\";
 
@@ -23,19 +30,20 @@ namespace Program
                 solutionDir + "/Program/plottingData/chromosome.json");
 
 
-            GA geneticAlgorithm = new GA(training_problem_0, 50, visualizer);
+            GA geneticAlgorithm = new GA(training_problem_0, 100, 5000, visualizer);
             geneticAlgorithm.run();
 
 
 
             //TODO:
-            // Fix fitness function to incorporate constraints
-            // calcfitness() on population is faster than calling calc on every new child
-            // better parameters for num children to create
-            // implement mutation
-            // better seleciton
-            // visualization, in python?
-            // add big dot for the depot in visualization
+            // x Fix fitness function to incorporate constraints
+            // ? calcfitness() on population is faster than calling calc on every new child
+            // x better parameters, for num children to create
+            // x implement mutation
+            // x better seleciton, fitness proportional selection
+            // x visualization, in python?
+            // _ add big dot for the depot in visualization
+            // _ fix issue with duplicate stops, within same route
 
 
         }
@@ -44,57 +52,73 @@ namespace Program
         Visualizer visualizer;
         int numIterations;
         Population population;
+        int populationSize;
         Random random;
         int seed = 1;
-        public GA(TSP problem, int numIterations, Visualizer visualizer) 
+        int numParentsToSelect;
+        double reorderMutationThreshold;
+        double transferMutationThreshold;
+        public GA(TSP problem, int populationSize, int numIterations, Visualizer visualizer) 
         {
             this.problem = problem;
+            this.populationSize = populationSize;
             this.numIterations = numIterations; 
-            this.random = new Random(seed);
             this.visualizer = visualizer;
+            this.random = new Random(seed);
+
+            // Mutation probabilities per patient
+            reorderMutationThreshold = 0.05;
+            transferMutationThreshold = 0.05;
+
+            numParentsToSelect = (int)((double)populationSize * 0.3);
+            if (numParentsToSelect % 2 != 0)
+                numParentsToSelect--;
         }
 
         public void run()
         {
 
-            //Initialization
+            // Initialization
             population = new Population(50, problem);
             population.inintializeEvenPatientSplit(false);
 
             problem.calcAvgNumPatientsPerNurse();
             population.calcFitness();
-            int numParents = 2;
             for (int i = 0; i < numIterations; i++)
             {
                 //population.calcFitness(); // all new added children have calculated fitnesses
                 population.sort();
 
-                if (i % 1 == 0 && i != 0)
-                    Console.WriteLine("Generation:  " + i + "\tFitness: " + population.population[0].fitness);
+                if (i == 0) { visualizer.visualize(population.population[0]); }
 
 
-                //Parent Selection
-                Chromosome[] parents = elitistSelection(numParents); // TODO: instead of copying and creating new parents, just look at the original individuals in population
+                // Parent Selection
+                //Chromosome[] parents = elitistSelection(numParentsToSelect);
+                Chromosome[] parents = fitnessProportionateSelection(numParentsToSelect);
 
 
-                //Crossover
+                // Crossover
                 Chromosome[] children = crossover(parents);
 
 
-                //Mutation
-                // TODO: implement, reset fitness (maybe?)
+                // Mutation
                 children = mutation(children);
 
 
-                //Offspring Selection
+                // Offspring Selection
                 offspringSelection_HammingDistanceCrowding(children, parents, 5, 1.0);
 
 
-                if(i == numIterations - 1)
+                // Logging and visuals
+                if (i % 100 == 0)
+                    Console.WriteLine("Generation:  " + i + "\tFitness: " + population.population[0].fitness);
+                //visualizer.visualize(population.population[0]);
+
+                if (i == numIterations - 1)
                     visualizer.visualize(population.population[0]);
             }
 
-            //Termination
+            // Termination
 
         }
 
@@ -107,9 +131,33 @@ namespace Program
             return selected;
         }
 
-        private void fitnessProportionateSelection()
+        private Chromosome[] fitnessProportionateSelection(int n)
         {
-            
+            Chromosome[] selected = new Chromosome[n];
+            double winner;
+            double proportion;
+            double previousProportions;
+            double sumFitness = population.calcFitness();
+
+            for (int i = 0; i < n; i++)
+            {
+                winner = random.NextDouble();
+                previousProportions = 0.0;
+
+                for (int j = 0; j < population.population.Length; j++)
+                {
+                    proportion = (double)population.population[j].fitness / sumFitness;
+
+                    if (winner >= previousProportions && winner < (proportion + previousProportions))
+                    {
+                        selected[i] = population.population[j];
+                        break;
+                    }
+
+                    previousProportions += proportion;
+                }
+            }
+            return selected;
         }
         
         private Chromosome[] crossover(Chromosome[] parents)
@@ -122,7 +170,7 @@ namespace Program
             int?[] patients2 = new int?[parents[0].numPatients];
             Chromosome[] children = new Chromosome[parents.Length];
 
-            // Make copies of parents, children, and modify them instead
+            // Make copies of parents, called children, and modify them instead
             for (int i = 0; i < parents.Length; i++)
             {
                 children[i] = (Chromosome)parents[i].Clone();
@@ -189,6 +237,100 @@ namespace Program
 
         private Chromosome[] mutation(Chromosome[] children) 
         {
+            // Two mutation types:
+            // Reorder patient within nurse route
+            // Give patient to another nurse route
+
+            int?[,] nursePaths;
+            bool doReorderMutation;
+            bool doTransferMutation;
+            int nurseIndex;
+            int patientIndex;
+            int patientValue;
+
+            for (int i = 0; i < children.Length; i++)
+            {
+                nursePaths = children[i].nursePaths;
+
+                for (int j = 0; j < nursePaths.GetLength(0); j++)
+                {
+                    if (nursePaths[j, 0] == null) continue;
+
+                    for (int k = 0; k < nursePaths.GetLength(1); k++)
+                    {
+                        if (nursePaths[j, k] == null) break;
+
+                        doReorderMutation = random.NextDouble() < reorderMutationThreshold;
+                        doTransferMutation = random.NextDouble() < transferMutationThreshold;
+
+                        if (doReorderMutation)
+                        {
+                            // Swap patient with random other patient within same nurse route
+                            int l;
+                            for (l = 0; l < nursePaths.GetLength(1); l++)
+                                if (nursePaths[j, l] == null) break;
+
+                            patientIndex = random.Next(0, l - 1);
+
+                            if (patientIndex == k)
+                                if (l != 1) // skip mutation if only 1 patient in route
+                                    patientIndex++;
+
+                            patientValue = (int)nursePaths[j, patientIndex];
+                            nursePaths[j, patientIndex] = nursePaths[j, k];
+                            nursePaths[j, k] = patientValue;
+
+                        }
+
+                        if (doTransferMutation)
+                        {
+                            nurseIndex = children[i].getNextAvailableNurse(random.Next(0, children[i].numNurses));
+                            int l;
+                            for (l = 0; l < nursePaths.GetLength(1); l++)
+                                if (nursePaths[nurseIndex, l] == null) break;
+
+                            // If route is full -> check another route
+                            if (l == nursePaths.GetLength(1))
+                            {
+                                nurseIndex = children[i].getNextAvailableNurse(nurseIndex);
+                                for (l = 0; l < nursePaths.GetLength(1); l++)
+                                    if (nursePaths[nurseIndex, l] == null) break;
+                            }
+                            patientIndex = random.Next(0, l);
+
+                            // Shift patients to the right within the array/route
+                            for (int m = children[i].numPatients - 1; m > patientIndex; m--)
+                            {
+                                if (nursePaths[nurseIndex, m - 1] == null) continue;
+
+                                nursePaths[nurseIndex, m] = nursePaths[nurseIndex, m - 1];
+                            }
+
+                            // Which gives a space for the new patient to be inserted
+                            nursePaths[nurseIndex, patientIndex] = (int)nursePaths[j, k];
+
+                            // Deleting from original location by 
+                            // Shifting patients to the left within the array/route at point of deletion
+                            for (int m = k; m < nursePaths.GetLength(1); m++)
+                            {
+                                // if no more to shift
+                                if (nursePaths[j, m] == null) break;
+
+                                // if m+1 is last index, set m to null
+                                if (m + 1 >= nursePaths.GetLength(1))
+                                {
+                                    nursePaths[j, m] = null;
+                                    break;
+                                }
+
+                                nursePaths[j, m] = nursePaths[j, m + 1];
+                            }
+                        }
+                    }
+                }
+                
+
+            }
 
             return children;
         }
@@ -203,7 +345,6 @@ namespace Program
             // replaces bottom y individuals from population where y = number of children
             // if and only if children are better than parents, in terms of distance-weighted fitness measure
 
-            double diversity;
             int sumChildDistance;
             int sumParentDistance;
             double childWeightedFitness;

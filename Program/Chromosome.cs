@@ -16,6 +16,11 @@ namespace Program
         public double? fitness { get; set; }
         public int numNurses;
         public int numPatients { get; private set; }
+
+        public static double timeViolationPenaltyModifier = 10;
+        public static double capacityViolationPenaltyModifier = 100;
+        public static double tooEarlyHeuristicPenaltyModifier = 100;
+
         public Chromosome(int numNurses, int numPatients) 
         {
             
@@ -30,6 +35,7 @@ namespace Program
             this.fitness = fitness;
             this.nursePaths = nursePaths;
         }
+
 
         public void insertByDistance(int?[] patients, Double[,] travel_times)
         {
@@ -168,8 +174,9 @@ namespace Program
             }
         }
 
-        public void updateNumNurses() // updates number of nurses to reflect the current utilization of nurses, i.e. if not are all used
+        public void updateNumNurses() 
         {
+            // updates number of nurses to reflect the current utilization of nurses, i.e. if not are all used
             numNurses = 0;
             for (int i = 0; i < nursePaths.GetLength(0); i++) 
             {
@@ -230,6 +237,11 @@ namespace Program
             }
         }
 
+        private double sigmoidScaled(double x, double scalingFactor)
+        {
+            return 2 / (1 + Math.Pow(Math.E, -scalingFactor * x)) - 1;
+        }
+
         public double calcFitness(TSP problem, bool withHeuristic = true)
         {
             if (fitness != null) return (double)fitness;
@@ -249,7 +261,7 @@ namespace Program
             int countTooLate = 0;
             double sumTooEarly = 0;
             double totalDrivingTime = 0.0;
-            double totalRouteTime = 0.0;
+            double totalRouteTime;
             Patient patient;
 
             for (int i = 0; i < numNurses; i++)
@@ -278,9 +290,15 @@ namespace Program
                         countTooLate += 1;
 
                     if (totalRouteTime < patient.start_time)
+                    {
                         sumTooEarly += patient.start_time - totalRouteTime;
+                        totalRouteTime += patient.start_time - totalRouteTime;
+                    }
 
                     totalRouteTime += patient.care_time;
+
+                    if (totalRouteTime >= patient.end_time)
+                        countTooLate += 1;
 
                     previousLocation = currentLocation;
                 }
@@ -297,11 +315,10 @@ namespace Program
 
             if (withHeuristic)
             {
-                fitness += 100  * countTooLate;
-                fitness += 10.0 * Math.Pow(totalCapacityViolation, 2);
-                fitness += 0.1  * Math.Pow(sumTooEarly, 2);
+                fitness += timeViolationPenaltyModifier * countTooLate;
+                fitness += capacityViolationPenaltyModifier * sigmoidScaled(totalCapacityViolation, 0.1);
+                fitness += tooEarlyHeuristicPenaltyModifier * sigmoidScaled(sumTooEarly, 0.0003);
             }
-
             return (double)fitness;
         }
 
