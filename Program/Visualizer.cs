@@ -27,7 +27,7 @@ namespace Program
             int[] edge = new int[2];
             int[] coord = new int[2];
             List<int[]> edges = new List<int[]>();
-            Dictionary<int, int[]>[] positionsList = new Dictionary<int, int[]>[chromosome.numNurses];
+            Dictionary<int, int[]>[] positionsList = new Dictionary<int, int[]>[chromosome.maxNumNurses];
             
 
             for (int i = 0; i < chromosome.nursePaths.GetLength(0); i++)

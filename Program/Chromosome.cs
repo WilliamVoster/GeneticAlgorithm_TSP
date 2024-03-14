@@ -15,22 +15,25 @@ namespace Program
         public int?[,] nursePaths { get; set; }
         public double? fitness { get; set; }
         public int numNurses;
+        public int maxNumNurses;
         public int numPatients { get; private set; }
 
         public static double timeViolationPenaltyModifier = 10;
         public static double capacityViolationPenaltyModifier = 100;
         public static double tooEarlyHeuristicPenaltyModifier = 100;
 
-        public Chromosome(int numNurses, int numPatients) 
+        public Chromosome(int numNurses, int numPatients, int maxNumNurses) 
         {
             
             this.nursePaths = new int?[numNurses, numPatients];
             this.numNurses = numNurses;
+            this.maxNumNurses = maxNumNurses;
             this.numPatients = numPatients;
         }
-        private Chromosome(int numNurses, int numPatients, double? fitness, int?[,] nursePaths)
+        private Chromosome(int numNurses, int maxNumNurses, int numPatients, double? fitness, int?[,] nursePaths)
         {
             this.numNurses = numNurses;
+            this.maxNumNurses = maxNumNurses;
             this.numPatients = numPatients;
             this.fitness = fitness;
             this.nursePaths = nursePaths;
@@ -47,11 +50,12 @@ namespace Program
             int rightNode;
             int? rightCol;
             double rightOptionDistance;
-            double distance = Double.MaxValue;
+            double distance;
             int stopIndex;
             for (int i = 0; i < patients.Length; i++)
             {
                 if (patients[i] == null) break;
+                distance = Double.MaxValue;
 
                 for (int j = 0; j < nursePaths.GetLength(0); j++)
                 {
@@ -182,15 +186,15 @@ namespace Program
             {
                 if (nursePaths[i, 0] != null)
                     numNurses++;
+                else continue;
             }
-            numNurses = nursePaths.GetLength(0);
         }
 
         public int getNextAvailableNurse(int nurse)
         {
             if (nursePaths[nurse, 0] != null) return nurse;
 
-            return getNextAvailableNurse((nurse + 1) % (numNurses - 1));
+            return getNextAvailableNurse((nurse + 1) % (maxNumNurses - 1));
         }
         
         public override bool Equals(object obj)
@@ -223,12 +227,13 @@ namespace Program
             {
                 int hash = 17;
 
-                for (int i = 0; i < this.numNurses; i++)
+                for (int i = 0; i < this.maxNumNurses; i++)
                 {
+                    if (nursePaths[i, 0] == null) continue;
+
                     for (int j = 0; j < this.numPatients; j++)
                     {
-                        if (nursePaths[i, j] == null)
-                            break;
+                        if (nursePaths[i, j] == null) break;
 
                         hash = hash * 23 + nursePaths[i, j].GetHashCode();
                     }
@@ -264,7 +269,7 @@ namespace Program
             double totalRouteTime;
             Patient patient;
 
-            for (int i = 0; i < numNurses; i++)
+            for (int i = 0; i < maxNumNurses; i++)
             {
                 if (nursePaths[i, 0] == null) continue;
 
@@ -319,6 +324,7 @@ namespace Program
                 fitness += capacityViolationPenaltyModifier * sigmoidScaled(totalCapacityViolation, 0.1);
                 fitness += tooEarlyHeuristicPenaltyModifier * sigmoidScaled(sumTooEarly, 0.0003);
             }
+            
             return (double)fitness;
         }
 
@@ -329,7 +335,7 @@ namespace Program
 
         public object Clone()
         {
-            return new Chromosome(numNurses, numPatients, fitness, (int?[,])nursePaths.Clone());
+            return new Chromosome(numNurses, maxNumNurses, numPatients, fitness, (int?[,])nursePaths.Clone());
         }
 
     }

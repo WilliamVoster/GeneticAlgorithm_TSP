@@ -3,6 +3,7 @@ import sys
 import json
 import networkx as nx
 import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
 
 
 def show_plot(data):
@@ -83,17 +84,23 @@ def show_plot(data):
             exit(1)
 
         
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(10, 7.5))
     
     nx.draw(
         G,
         pos=positions_dict,
         with_labels=True, 
-        node_color='skyblue', 
+        node_color='black', 
         edge_color=edge_color_list, 
-        width=2.0, 
-        font_size=6,
-        node_size=50)
+        width=1.0, 
+        font_size=3,
+        node_size=12,
+        node_shape='s')
+    
+    # Adding a circle to the plot to represent the depot
+    circle = Circle(positions_list[0]["0"], 2, color='black', fill=True)
+    plt.gca().add_patch(circle)
+    
     
     plt.subplots_adjust(left=0.0, right=1.0, bottom=0.0, top=1.0)
     plt.show()

@@ -42,8 +42,8 @@ namespace Program
             // x implement mutation
             // x better seleciton, fitness proportional selection
             // x visualization, in python?
-            // _ add big dot for the depot in visualization
-            // _ fix issue with duplicate stops, within same route
+            // x add big dot for the depot in visualization
+            // x fix issue with duplicate stops, within same route
 
 
         }
@@ -77,10 +77,13 @@ namespace Program
 
         public void run()
         {
-
             // Initialization
             population = new Population(50, problem);
             population.inintializeEvenPatientSplit(false);
+
+            Chromosome bestIndividual = (Chromosome)population.population[0].Clone();
+            bestIndividual.fitness = double.MaxValue;
+
 
             problem.calcAvgNumPatientsPerNurse();
             population.calcFitness();
@@ -88,6 +91,9 @@ namespace Program
             {
                 //population.calcFitness(); // all new added children have calculated fitnesses
                 population.sort();
+
+                if (population.population[0].fitness < bestIndividual.fitness)
+                    bestIndividual = (Chromosome)population.population[0].Clone();
 
                 if (i == 0) { visualizer.visualize(population.population[0]); }
 
@@ -112,14 +118,44 @@ namespace Program
                 // Logging and visuals
                 if (i % 100 == 0)
                     Console.WriteLine("Generation:  " + i + "\tFitness: " + population.population[0].fitness);
-                //visualizer.visualize(population.population[0]);
-
-                if (i == numIterations - 1)
-                    visualizer.visualize(population.population[0]);
+                
             }
 
             // Termination
+            visualizer.visualize(bestIndividual);
 
+        }
+
+        public void tempCheckDuplicates(Chromosome[] pop)
+        {
+            return;
+            for (int i = 0; i < pop.Length; i++)
+            {
+                for(int j = 0; j < pop[i].nursePaths.GetLength(0); j++)
+                {
+                    if (pop[i].nursePaths[j, 0] == null) continue;
+                    for(int k = 0; k < pop[i].nursePaths.GetLength(1); k++)
+                    {
+                        if (pop[i].nursePaths[j, k] == null) continue;
+                        for (int l = 0; l < pop[i].nursePaths.GetLength(0); l++)
+                        {
+                            if (pop[i].nursePaths[l, 0] == null) continue;
+                            for (int m = 0; m < pop[i].nursePaths.GetLength(1); m++)
+                            {
+                                if (pop[i].nursePaths[l, m] == null) continue;
+                                if (j == l && k == m) continue;
+                                if (pop[i].nursePaths[j, k] == null || pop[i].nursePaths[l, m] == null) continue;
+                                if (pop[i].nursePaths[j, k] == pop[i].nursePaths[l, m])
+                                {
+                                    Console.WriteLine("PROBLEM!");
+                                    return;
+                                }
+                            }
+                        }
+                    }
+
+                }
+            }
         }
 
         private Chromosome[] elitistSelection(int n)
@@ -176,8 +212,17 @@ namespace Program
                 children[i] = (Chromosome)parents[i].Clone();
             }
 
+
             for (int i = 0; i < children.Length; i += 2)
             {
+                for (int j = 0; j < patients1.Length; j++)
+                {
+                    if (patients1[j] == null && patients2[j] == null) break;
+                    patients1[j] = null;
+                    patients2[j] = null;
+                }
+
+
                 children[i].updateNumNurses();
                 children[i + 1].updateNumNurses();
                 nurseIndex1 = children[i].getNextAvailableNurse(random.Next(0, children[i].numNurses));
@@ -226,14 +271,9 @@ namespace Program
                 children[i + 1].fitness = null;
 
             }
-
             return children;
         }
 
-        private void clusteringKMeans()
-        {
-
-        }
 
         private Chromosome[] mutation(Chromosome[] children) 
         {
@@ -331,7 +371,6 @@ namespace Program
                 
 
             }
-
             return children;
         }
         
@@ -381,6 +420,7 @@ namespace Program
                 {
                     population.population[population.population.Length - 1 - i] = children[i];
                 }
+
             }
 
         }

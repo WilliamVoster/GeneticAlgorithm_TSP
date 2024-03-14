@@ -32,7 +32,7 @@ namespace Program
 
             for (int i = 0; i < popSize; i++)
             {
-                Chromosome chromosome = new Chromosome(numNurses, numPatients);
+                Chromosome chromosome = new Chromosome(numNurses, numPatients, problem.nbr_nurses);
 
                 int nurseID = 0;
                 int countPatients = 0;
