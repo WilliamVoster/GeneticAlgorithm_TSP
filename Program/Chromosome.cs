@@ -293,8 +293,8 @@ namespace Program
                     if (usedCapacity > problem.capacity_nurse)
                         totalCapacityViolation += usedCapacity - problem.capacity_nurse;
 
-                    if (totalRouteTime > patient.start_time)
-                        countTooLate += 1;
+                    //if (totalRouteTime > patient.start_time)
+                    //    countTooLate += 1;
 
                     if (totalRouteTime < patient.start_time)
                     {

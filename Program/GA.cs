@@ -70,7 +70,7 @@ namespace Program
             }
             Chromosome bestIndividual = islands[bestIsland].population[0];
 
-            double fitness = bestIndividual.calcFitness(training_problem_0);
+            double fitness = bestIndividual.calcFitness(training_problem_0, false);
 
             visualizer.visualize(bestIndividual);
 
@@ -325,6 +325,15 @@ namespace Program
                     previousProportions += proportion;
                 }
             }
+
+            for (int i = 0; i < selected.Length; i++)
+            {
+                if (selected[i] == null)
+                {
+                    Console.WriteLine("HOW?");
+                }
+            }
+
             return selected;
         }
         
