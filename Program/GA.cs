@@ -13,12 +13,6 @@ namespace Program
     {
         public static void Main(string[] args)
         {
-            ////Test
-            //int l;
-            //for (l = 0; l < 10; l++)
-            //    if (l == 2) break;
-            //Console.WriteLine(l);
-            //return;
 
             string solutionDir = Directory.GetCurrentDirectory() + "\\..\\..\\..\\";
 
@@ -32,19 +26,6 @@ namespace Program
 
             GA geneticAlgorithm = new GA(training_problem_0, 100, 5000, visualizer);
             geneticAlgorithm.run();
-
-
-
-            //TODO:
-            // x Fix fitness function to incorporate constraints
-            // ? calcfitness() on population is faster than calling calc on every new child
-            // x better parameters, for num children to create
-            // x implement mutation
-            // x better seleciton, fitness proportional selection
-            // x visualization, in python?
-            // x add big dot for the depot in visualization
-            // x fix issue with duplicate stops, within same route
-
 
         }
 
@@ -85,6 +66,17 @@ namespace Program
             bestIndividual.fitness = double.MaxValue;
 
 
+            //test
+
+            //Console.WriteLine(bestIndividual);
+            //Console.WriteLine(bestIndividual.print(problem));
+            //Console.WriteLine("test");
+            //string jsonValidateRoutesFilePath = Directory.GetCurrentDirectory() + "\\..\\..\\..\\" + "/Program/plottingData/validate.json";
+            //bestIndividual.saveNursePathsToJson(jsonValidateRoutesFilePath);
+
+            //___
+
+
             problem.calcAvgNumPatientsPerNurse();
             population.calcFitness();
             for (int i = 0; i < numIterations; i++)
@@ -123,6 +115,10 @@ namespace Program
 
             // Termination
             visualizer.visualize(bestIndividual);
+            string jsonValidateRoutesFilePath = Directory.GetCurrentDirectory() + "\\..\\..\\..\\" + "/Program/plottingData/validate.json";
+            bestIndividual.saveNursePathsToJson(jsonValidateRoutesFilePath);
+            Console.WriteLine(bestIndividual.print(problem));
+            Console.WriteLine("Test");
 
         }
 

@@ -1,6 +1,8 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Security.Policy;
@@ -18,7 +20,7 @@ namespace Program
         public int maxNumNurses;
         public int numPatients { get; private set; }
 
-        public static double timeViolationPenaltyModifier = 10;
+        public static double timeViolationPenaltyModifier = 20;
         public static double capacityViolationPenaltyModifier = 100;
         public static double tooEarlyHeuristicPenaltyModifier = 100;
 
@@ -249,7 +251,7 @@ namespace Program
 
         public double calcFitness(TSP problem, bool withHeuristic = true)
         {
-            if (fitness != null) return (double)fitness;
+            if (fitness != null && withHeuristic) return (double)fitness;
 
 
             // Fitness factors
@@ -338,5 +340,122 @@ namespace Program
             return new Chromosome(numNurses, maxNumNurses, numPatients, fitness, (int?[,])nursePaths.Clone());
         }
 
+        public void saveNursePathsToJson(string filePath)
+        {
+            //int[][] paths = new int[numNurses][];
+            List<List<int>> paths = new List<List<int>>();
+            for (int i = 0; i < maxNumNurses; i++)
+            {
+                //if (nursePaths[i, 0] == null) continue;
+
+                List<int> inner = new List<int>();
+
+                for (int j = 0; j < numPatients; j++)
+                {
+                    if (nursePaths[i, j] == null) break;
+
+                    inner.Add((int)nursePaths[i, j]);
+                }
+
+                paths.Add(inner);
+            }
+
+            //Console.WriteLine(paths);
+            string jsonString = JsonConvert.SerializeObject(paths);
+            //Console.WriteLine(jsonString);
+
+            File.WriteAllText(filePath, jsonString);
+        }
+
+        public string print(TSP problem)
+        {
+            int previousLocation;
+            int currentLocation;
+            int usedCapacity;
+            double totalRouteTime;
+            Patient patient;
+
+            StringBuilder sb = new StringBuilder();
+
+            sb.Append($"Nurse capacity: {problem.capacity_nurse}\n");
+
+            sb.Append($"Depot return time: {problem.depot.return_time}\n");
+            
+            sb.Append('-', 100);
+            sb.Append("\n");
+
+
+            for (int i = 0; i < maxNumNurses; i++)
+            {
+                if (nursePaths[i, 0] == null) continue;
+
+                previousLocation = 0;
+                totalRouteTime = 0;
+                usedCapacity = 0;
+                for (int j = 0; j < numPatients; j++)
+                {
+                    if (nursePaths[i, j] == null) break;
+
+                    currentLocation = (int)nursePaths[i, j];
+                    patient = problem.patients[currentLocation];
+                    usedCapacity += patient.demand;
+
+                    totalRouteTime += problem.travel_times[previousLocation, currentLocation];
+
+                    previousLocation = currentLocation;
+                }
+                totalRouteTime += problem.travel_times[previousLocation, 0];
+
+
+                sb.Append($"Nurse {i+1, -7}");
+
+                sb.Append($"{totalRouteTime, 6:F2}");
+
+                sb.Append($"{usedCapacity, 8}");
+
+                sb.Append($"\tD(0)");
+                sb.Append($"   →   ");
+
+                previousLocation = 0;
+                totalRouteTime = 0;
+                for (int j = 0; j < numPatients; j++)
+                {
+                    if (nursePaths[i, j] == null) break;
+
+                    currentLocation = (int)nursePaths[i, j];
+                    patient = problem.patients[currentLocation];
+                    totalRouteTime += problem.travel_times[previousLocation, currentLocation];
+
+
+                    sb.Append($"{currentLocation}");
+
+                    sb.Append($"({totalRouteTime:F2}");
+                    totalRouteTime += patient.care_time;
+                    sb.Append($"-{totalRouteTime:F2})");
+
+                    sb.Append($"[{patient.start_time}-{patient.end_time}]");
+
+                    sb.Append($"   →   ");
+
+
+                    previousLocation = currentLocation;
+                }
+
+                sb.Append($"D({totalRouteTime:F2})");
+
+                sb.Append("\n");
+
+            }
+
+            sb.Append('-', 100);
+            sb.Append("\n");
+
+            double ojbectiveFitness = calcFitness(problem, false);
+
+            sb.Append($"Objective value (total duration): {ojbectiveFitness}");
+
+            return sb.ToString();
+
+        }
     }
 }
