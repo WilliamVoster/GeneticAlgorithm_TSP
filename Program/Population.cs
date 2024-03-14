@@ -12,7 +12,7 @@ namespace Program
     internal class Population
     {
         private TSP problem;
-        public Chromosome[] population { get; private set; }
+        public Chromosome[] population { get; set; }
         private Dictionary<Chromosome, double> fitnessLookUp;
         public int popSize {  get; private set; }
 

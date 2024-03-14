@@ -6,12 +6,17 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 
 namespace Program
 {
     internal class GA
     {
+        static int numThreads = 6;
+        static Barrier barrier = new Barrier(numThreads);
+        static Population[] islands = new Population[numThreads];
+
         public int countChildFitter = 0;
         public int countParentFitter = 0;
         public static void Main(string[] args)
@@ -26,11 +31,55 @@ namespace Program
                 solutionDir + "/Program/plotting.py", 
                 solutionDir + "/Program/plottingData/chromosome.json");
 
+            // Single threaded:
+            //GA geneticAlgorithm = new GA(training_problem_0, 100, 10000, visualizer, 1);
+            //geneticAlgorithm.run();
 
-            GA geneticAlgorithm = new GA(training_problem_0, 100, 10000, visualizer);
-            geneticAlgorithm.run();
+
+            // Multi threading:
+            Thread[] threads = new Thread[numThreads];
+            for (int i = 0; i < numThreads; i++)
+            {
+                TSP problem_0 = TSP.readJSON(solutionDir + "Data/train_0.json");
+
+                GA geneticAlgorithm = new GA(problem_0, 80, 7000, visualizer, i);
+
+                Thread thread = new Thread(geneticAlgorithm.run);
+                threads[i] = thread;
+                threads[i].Start();
+            }
+            for (int i = 0; i < numThreads; i++)
+            {
+                threads[i].Join();
+            }
+
+            int bestIsland = -1;
+            double bestFitness = double.MaxValue;
+
+            for(int i = 0; i < numThreads; i++)
+            {
+                if (islands[i].population[0].fitness < bestFitness)
+                {
+                    bestIsland = i;
+                    bestFitness = (double)islands[i].population[0].fitness;
+                }
+            }
+            Chromosome bestIndividual = islands[bestIsland].population[0];
+
+            visualizer.visualize(bestIndividual);
+
+            string jsonValidateRoutesFilePath = Directory.GetCurrentDirectory() + "\\..\\..\\..\\" + "/Program/plottingData/validate.json";
+            bestIndividual.saveNursePathsToJson(jsonValidateRoutesFilePath);
+
+            Console.WriteLine(bestIndividual.print(training_problem_0));
+            bestIndividual.print(training_problem_0, Directory.GetCurrentDirectory() + "\\..\\..\\..\\" + "/Program/plottingData/bestIndividual_stringformat.json");
+
+            Console.WriteLine("Test");
+
+
 
         }
+
 
         TSP problem;
         Visualizer visualizer;
@@ -38,20 +87,22 @@ namespace Program
         Population population;
         int populationSize;
         Random random;
-        int seed = 1;
+        //int seed = 1;
+        int islandID;
         int numParentsToSelect;
         double reorderMutationThreshold;
         double transferMutationThreshold;
         double crossoverRate;
         double crowdingEffect;
         int numNeighborsToCompare;
-        public GA(TSP problem, int populationSize, int numIterations, Visualizer visualizer) 
+        public GA(TSP problem, int populationSize, int numIterations, Visualizer visualizer, int islandID) 
         {
             this.problem = problem;
             this.populationSize = populationSize;
             this.numIterations = numIterations; 
             this.visualizer = visualizer;
-            this.random = new Random(seed);
+            this.random = new Random(islandID);
+            this.islandID = islandID;
 
             // only even number of parents to select
             numParentsToSelect = (int)((double)populationSize * 0.4);
@@ -62,7 +113,7 @@ namespace Program
             reorderMutationThreshold = 0.008;
             transferMutationThreshold = 0.008;
 
-            crossoverRate = 0.7;
+            crossoverRate = 0.4;
 
             this.crowdingEffect = 5.0;
             numNeighborsToCompare = (int)((double)populationSize * 0.1);
@@ -71,22 +122,22 @@ namespace Program
 
         public void run()
         {
+
             // Initialization
             population = new Population(populationSize, problem);
-            //population.inintializeEvenPatientSplit(false);
             population.inintializeEvenPatientSplit(true);
+
+            lock (islands)
+            {
+                islands[islandID] = population;
+            }
+            
 
             Chromosome bestIndividual = (Chromosome)population.population[0].Clone();
             bestIndividual.fitness = double.MaxValue;
 
 
             //test
-
-            //Console.WriteLine(bestIndividual);
-            //Console.WriteLine(bestIndividual.print(problem));
-            //Console.WriteLine("test");
-            //string jsonValidateRoutesFilePath = Directory.GetCurrentDirectory() + "\\..\\..\\..\\" + "/Program/plottingData/validate.json";
-            //bestIndividual.saveNursePathsToJson(jsonValidateRoutesFilePath);
             List<int[]> fitter = new List<int[]>();
             List<double> avgFitness = new List<double>();
             double sumFitness;
@@ -100,20 +151,18 @@ namespace Program
             population.calcFitness();
             for (int i = 0; i < numIterations; i++)
             {
-                // Testing
-                //if (i == 0) { visualizer.visualize(population.population[0]); }
 
-
-                if (i % 100 == 0)
+                // Testing and logging
+                if (i % 100 == 0 && islandID == 0)
                 {
 
                     int[] pair = new int[] {countChildFitter, countParentFitter};
                     fitter.Add(pair);
 
-                    sumFitness = population.calcFitness(); // all new added children have calculated fitnesses
+                    sumFitness = population.calcFitness(); // all new added children already have calculated fitnesses
                     avgFitness.Add(sumFitness / populationSize);
 
-                    Console.WriteLine("Generation:  " + i + "\tFitness: " + population.population[0].fitness + " \t Avg fitness: " + sumFitness / populationSize);
+                    Console.WriteLine($"island {islandID} " + "Generation:  " + i + "\tFitness: " + population.population[0].fitness + " \t Avg fitness: " + sumFitness / populationSize);
 
                 }
                 fitnessAvg = (population.calcFitness() / populationSize);
@@ -147,29 +196,56 @@ namespace Program
                 else
                     countEqualFitness = 0;
 
-
+                //offspringSelection_fitnessProportionate(children, parents);
                 //offspringSelection_HammingDistanceCrowding(children, parents, numNeighborsToCompare, distanceWeight);
                 //offspringSelection_HammingDistanceCrowding(children, parents, 5, 10);
-                offspringSelection_HammingDistanceCrowding(children, parents, 5, distanceWeight + 0.5 * (double)countEqualFitness);
                 //offspringSelection_HammingDistanceCrowding(children, parents, 5, distanceWeight);
+                offspringSelection_HammingDistanceCrowding(children, parents, 5, distanceWeight + 0.5 * (double)countEqualFitness);
 
-                //offspringSelection_fitnessProportionate(children, parents);
+
+
+                // Multi threading -> sharing individuals
+                if (i % 500 == 0 && i != 0)
+                {
+                    barrier.SignalAndWait();
+
+                    //Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} Synched");
+
+                    lock (islands)
+                    {
+
+                        Chromosome migrant = (Chromosome)population.population[0].Clone();
+
+                        int destination = random.Next(numThreads);
+
+                        for (int k = 0; k < numThreads; k++)
+                        {
+                            if (k == destination)
+                            {
+                                islands[destination].population[populationSize - 1 - k] = migrant;
+
+                            }
+
+                        }
+                    }
+                }
+
 
 
                 previousFitnesAvg = fitnessAvg;
 
             }
 
-            // Termination
-            visualizer.visualize(bestIndividual);
+            //// Termination
+            //visualizer.visualize(bestIndividual);
 
-            string jsonValidateRoutesFilePath = Directory.GetCurrentDirectory() + "\\..\\..\\..\\" + "/Program/plottingData/validate.json";
-            bestIndividual.saveNursePathsToJson(jsonValidateRoutesFilePath);
+            //string jsonValidateRoutesFilePath = Directory.GetCurrentDirectory() + "\\..\\..\\..\\" + "/Program/plottingData/validate.json";
+            //bestIndividual.saveNursePathsToJson(jsonValidateRoutesFilePath);
 
-            Console.WriteLine(bestIndividual.print(problem));
-            bestIndividual.print(problem, Directory.GetCurrentDirectory() + "\\..\\..\\..\\" + "/Program/plottingData/bestIndividual_stringformat.json");
+            //Console.WriteLine(bestIndividual.print(problem));
+            //bestIndividual.print(problem, Directory.GetCurrentDirectory() + "\\..\\..\\..\\" + "/Program/plottingData/bestIndividual_stringformat.json");
 
-            Console.WriteLine("Test");
+            //Console.WriteLine("Test");
 
         }
 
@@ -529,4 +605,51 @@ namespace Program
 
 
 }
+//// TEsting threading
+//class Program2
+//{
+//    static Barrier barrier = new Barrier(3); // Specify the number of threads
 
+//    static void Main(string[] args)
+//    {
+//        // Create threads
+//        Thread thread1 = new Thread(ThreadMethod);
+//        Thread thread2 = new Thread(ThreadMethod);
+//        Thread thread3 = new Thread(ThreadMethod);
+
+//        // Start threads
+//        thread1.Start();
+//        thread2.Start();
+//        thread3.Start();
+
+//        // Wait for all threads to finish
+//        thread1.Join();
+//        thread2.Join();
+//        thread3.Join();
+
+//        Console.WriteLine("All threads completed.");
+//    }
+
+//    static void ThreadMethod()
+//    {
+//        for (int i = 0; i < 5; i++) // Each thread will have 5 iterations
+//        {
+//            // Perform some work
+//            Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} - Iteration {i + 1}");
+
+//            // Signal that this thread has reached the barrier
+//            barrier.SignalAndWait();
+
+//            // Perform data swapping after all threads have reached the barrier
+//            if (barrier.CurrentPhaseNumber == 0)
+//            {
+//                Console.WriteLine("Data swapping...");
+//                // Simulate data swapping
+//                Thread.Sleep(1000);
+//            }
+
+//            // Continue working after data swapping
+//            // Here you can add the code for further processing
+//        }
+//    }
+//}
