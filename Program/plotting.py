@@ -53,9 +53,12 @@ def show_plot(data):
 
     edge_colors = {}
     edge_index = 0
+    depot_coordinates = (None, None)
     for i, positions in enumerate(positions_list):
 
         if positions == None: continue
+
+        depot_coordinates = positions["0"]
 
         for j, patient in enumerate(positions):
             (x, y) = edges[edge_index]
@@ -98,7 +101,7 @@ def show_plot(data):
         node_shape='s')
     
     # Adding a circle to the plot to represent the depot
-    circle = Circle(positions_list[0]["0"], 2, color='black', fill=True)
+    circle = Circle(depot_coordinates, 2, color='black', fill=True)
     plt.gca().add_patch(circle)
     
     

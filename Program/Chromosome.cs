@@ -20,8 +20,8 @@ namespace Program
         public int maxNumNurses;
         public int numPatients { get; private set; }
 
-        public static double timeViolationPenaltyModifier = 20;
-        public static double capacityViolationPenaltyModifier = 100;
+        public static double timeViolationPenaltyModifier = 10;
+        public static double capacityViolationPenaltyModifier = 500;
         public static double tooEarlyHeuristicPenaltyModifier = 100;
 
         public Chromosome(int numNurses, int numPatients, int maxNumNurses) 
@@ -324,7 +324,9 @@ namespace Program
             {
                 fitness += timeViolationPenaltyModifier * countTooLate;
                 fitness += capacityViolationPenaltyModifier * sigmoidScaled(totalCapacityViolation, 0.1);
-                fitness += tooEarlyHeuristicPenaltyModifier * sigmoidScaled(sumTooEarly, 0.0003);
+
+                if (countTooLate != 0)
+                    fitness += tooEarlyHeuristicPenaltyModifier * sigmoidScaled(sumTooEarly, 0.0003);
             }
             
             return (double)fitness;
@@ -342,11 +344,9 @@ namespace Program
 
         public void saveNursePathsToJson(string filePath)
         {
-            //int[][] paths = new int[numNurses][];
             List<List<int>> paths = new List<List<int>>();
             for (int i = 0; i < maxNumNurses; i++)
             {
-                //if (nursePaths[i, 0] == null) continue;
 
                 List<int> inner = new List<int>();
 
@@ -360,14 +360,12 @@ namespace Program
                 paths.Add(inner);
             }
 
-            //Console.WriteLine(paths);
             string jsonString = JsonConvert.SerializeObject(paths);
-            //Console.WriteLine(jsonString);
 
             File.WriteAllText(filePath, jsonString);
         }
 
-        public string print(TSP problem)
+        public string print(TSP problem, string filePath = null)
         {
             int previousLocation;
             int currentLocation;
@@ -413,7 +411,7 @@ namespace Program
 
                 sb.Append($"{usedCapacity, 8}");
 
-                sb.Append($"\tD(0)");
+                sb.Append($"\t\tD(0)");
                 sb.Append($"   →   ");
 
                 previousLocation = 0;
@@ -453,6 +451,11 @@ namespace Program
             double ojbectiveFitness = calcFitness(problem, false);
 
             sb.Append($"Objective value (total duration): {ojbectiveFitness}");
+
+            if (filePath != null)
+            {
+                File.WriteAllText(filePath, sb.ToString());
+            }
 
             return sb.ToString();
 

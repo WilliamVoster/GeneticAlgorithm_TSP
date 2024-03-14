@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json.Bson;
+using Program;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,6 +12,8 @@ namespace Program
 {
     internal class GA
     {
+        public int countChildFitter = 0;
+        public int countParentFitter = 0;
         public static void Main(string[] args)
         {
 
@@ -24,7 +27,7 @@ namespace Program
                 solutionDir + "/Program/plottingData/chromosome.json");
 
 
-            GA geneticAlgorithm = new GA(training_problem_0, 100, 5000, visualizer);
+            GA geneticAlgorithm = new GA(training_problem_0, 100, 10000, visualizer);
             geneticAlgorithm.run();
 
         }
@@ -39,6 +42,9 @@ namespace Program
         int numParentsToSelect;
         double reorderMutationThreshold;
         double transferMutationThreshold;
+        double crossoverRate;
+        double crowdingEffect;
+        int numNeighborsToCompare;
         public GA(TSP problem, int populationSize, int numIterations, Visualizer visualizer) 
         {
             this.problem = problem;
@@ -47,20 +53,28 @@ namespace Program
             this.visualizer = visualizer;
             this.random = new Random(seed);
 
-            // Mutation probabilities per patient
-            reorderMutationThreshold = 0.05;
-            transferMutationThreshold = 0.05;
-
-            numParentsToSelect = (int)((double)populationSize * 0.3);
+            // only even number of parents to select
+            numParentsToSelect = (int)((double)populationSize * 0.4);
             if (numParentsToSelect % 2 != 0)
                 numParentsToSelect--;
+
+            // Mutation probabilities per patient
+            reorderMutationThreshold = 0.008;
+            transferMutationThreshold = 0.008;
+
+            crossoverRate = 0.7;
+
+            this.crowdingEffect = 5.0;
+            numNeighborsToCompare = (int)((double)populationSize * 0.1);
+
         }
 
         public void run()
         {
             // Initialization
-            population = new Population(50, problem);
-            population.inintializeEvenPatientSplit(false);
+            population = new Population(populationSize, problem);
+            //population.inintializeEvenPatientSplit(false);
+            population.inintializeEvenPatientSplit(true);
 
             Chromosome bestIndividual = (Chromosome)population.population[0].Clone();
             bestIndividual.fitness = double.MaxValue;
@@ -73,7 +87,12 @@ namespace Program
             //Console.WriteLine("test");
             //string jsonValidateRoutesFilePath = Directory.GetCurrentDirectory() + "\\..\\..\\..\\" + "/Program/plottingData/validate.json";
             //bestIndividual.saveNursePathsToJson(jsonValidateRoutesFilePath);
-
+            List<int[]> fitter = new List<int[]>();
+            List<double> avgFitness = new List<double>();
+            double sumFitness;
+            double fitnessAvg;
+            double previousFitnesAvg = double.MaxValue;
+            int countEqualFitness = 0;
             //___
 
 
@@ -81,13 +100,31 @@ namespace Program
             population.calcFitness();
             for (int i = 0; i < numIterations; i++)
             {
-                //population.calcFitness(); // all new added children have calculated fitnesses
+                // Testing
+                //if (i == 0) { visualizer.visualize(population.population[0]); }
+
+
+                if (i % 100 == 0)
+                {
+
+                    int[] pair = new int[] {countChildFitter, countParentFitter};
+                    fitter.Add(pair);
+
+                    sumFitness = population.calcFitness(); // all new added children have calculated fitnesses
+                    avgFitness.Add(sumFitness / populationSize);
+
+                    Console.WriteLine("Generation:  " + i + "\tFitness: " + population.population[0].fitness + " \t Avg fitness: " + sumFitness / populationSize);
+
+                }
+                fitnessAvg = (population.calcFitness() / populationSize);
+                
+
+
+                // Start______________________________________________________________________
                 population.sort();
 
                 if (population.population[0].fitness < bestIndividual.fitness)
                     bestIndividual = (Chromosome)population.population[0].Clone();
-
-                if (i == 0) { visualizer.visualize(population.population[0]); }
 
 
                 // Parent Selection
@@ -104,20 +141,34 @@ namespace Program
 
 
                 // Offspring Selection
-                offspringSelection_HammingDistanceCrowding(children, parents, 5, 1.0);
+                double distanceWeight = crowdingEffect - crowdingEffect * 0.5 * ((double)i / (double)numIterations);
+                if (fitnessAvg == previousFitnesAvg)
+                    countEqualFitness++;
+                else
+                    countEqualFitness = 0;
 
 
-                // Logging and visuals
-                if (i % 100 == 0)
-                    Console.WriteLine("Generation:  " + i + "\tFitness: " + population.population[0].fitness);
-                
+                //offspringSelection_HammingDistanceCrowding(children, parents, numNeighborsToCompare, distanceWeight);
+                //offspringSelection_HammingDistanceCrowding(children, parents, 5, 10);
+                offspringSelection_HammingDistanceCrowding(children, parents, 5, distanceWeight + 0.5 * (double)countEqualFitness);
+                //offspringSelection_HammingDistanceCrowding(children, parents, 5, distanceWeight);
+
+                //offspringSelection_fitnessProportionate(children, parents);
+
+
+                previousFitnesAvg = fitnessAvg;
+
             }
 
             // Termination
             visualizer.visualize(bestIndividual);
+
             string jsonValidateRoutesFilePath = Directory.GetCurrentDirectory() + "\\..\\..\\..\\" + "/Program/plottingData/validate.json";
             bestIndividual.saveNursePathsToJson(jsonValidateRoutesFilePath);
+
             Console.WriteLine(bestIndividual.print(problem));
+            bestIndividual.print(problem, Directory.GetCurrentDirectory() + "\\..\\..\\..\\" + "/Program/plottingData/bestIndividual_stringformat.json");
+
             Console.WriteLine("Test");
 
         }
@@ -201,6 +252,7 @@ namespace Program
             int?[] patients1 = new int?[parents[0].numPatients];
             int?[] patients2 = new int?[parents[0].numPatients];
             Chromosome[] children = new Chromosome[parents.Length];
+            bool abortCrossover = false;
 
             // Make copies of parents, called children, and modify them instead
             for (int i = 0; i < parents.Length; i++)
@@ -211,6 +263,8 @@ namespace Program
 
             for (int i = 0; i < children.Length; i += 2)
             {
+                if (random.NextDouble() < crossoverRate) continue;
+
                 for (int j = 0; j < patients1.Length; j++)
                 {
                     if (patients1[j] == null && patients2[j] == null) break;
@@ -234,6 +288,12 @@ namespace Program
                     //children[i + 1].deleteByValue(patient1);
 
                     patients1[j] = patient1;
+
+                    if (j > 0.8 * (double)children[i].numPatients)
+                    {
+                        abortCrossover = true;
+                        break;
+                    }
                 }
 
                 // Patients from one nurse in parent2 are deleted in parent1
@@ -247,7 +307,19 @@ namespace Program
 
                     patients2[j] = patient2;
 
+                    if (j > 0.8 * (double)children[i].numPatients)
+                    {
+                        abortCrossover = true;
+                        break;
+                    }
                 }
+
+                if (abortCrossover)
+                {
+                    abortCrossover = false;
+                    continue;
+                }
+
                 for (int j = 0;j < patients1.Length; j++)
                 {
                     if (patients1[j] == null) break;
@@ -415,12 +487,41 @@ namespace Program
                 if (childWeightedFitness < parentWeightedFitness)
                 {
                     population.population[population.population.Length - 1 - i] = children[i];
+                    countChildFitter++;
+                }
+                else
+                {
+                    countParentFitter++;
                 }
 
             }
 
         }
 
+        private void offspringSelection_fitnessProportionate(Chromosome[] children, Chromosome[] parents)
+        {
+            double childFitness;
+            double parentFitness;
+            double sumFitness;
+
+            for (int i = 0; i < children.Length; i++) 
+            {
+                childFitness = children[i].calcFitness(problem);
+                parentFitness = parents[i].calcFitness(problem);
+
+                sumFitness = childFitness + parentFitness;
+
+                if(random.NextDouble() < (childFitness / sumFitness))
+                {
+                    population.population[population.population.Length - 1 - i] = children[i];
+                    countChildFitter++;
+                }
+                else
+                {
+                    countParentFitter++;
+                }
+            }
+        }
 
         
 
