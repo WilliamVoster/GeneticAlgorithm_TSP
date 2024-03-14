@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json.Bson;
 using Program;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,7 +14,7 @@ namespace Program
 {
     internal class GA
     {
-        static int numThreads = 6;
+        static int numThreads = 7;
         static Barrier barrier = new Barrier(numThreads);
         static Population[] islands = new Population[numThreads];
 
@@ -21,6 +22,9 @@ namespace Program
         public int countParentFitter = 0;
         public static void Main(string[] args)
         {
+
+            // TODO
+            // _ grow reschedulre mutation prob with iterations. Still has some violations in final
 
             string solutionDir = Directory.GetCurrentDirectory() + "\\..\\..\\..\\";
 
@@ -42,7 +46,7 @@ namespace Program
             {
                 TSP problem_0 = TSP.readJSON(solutionDir + "Data/train_0.json");
 
-                GA geneticAlgorithm = new GA(problem_0, 80, 7000, visualizer, i);
+                GA geneticAlgorithm = new GA(problem_0, 80, 10000, visualizer, i);
 
                 Thread thread = new Thread(geneticAlgorithm.run);
                 threads[i] = thread;
@@ -65,6 +69,8 @@ namespace Program
                 }
             }
             Chromosome bestIndividual = islands[bestIsland].population[0];
+
+            double fitness = bestIndividual.calcFitness(training_problem_0);
 
             visualizer.visualize(bestIndividual);
 
@@ -92,6 +98,7 @@ namespace Program
         int numParentsToSelect;
         double reorderMutationThreshold;
         double transferMutationThreshold;
+        double reorderByScheduleMutationThreshold;
         double crossoverRate;
         double crowdingEffect;
         int numNeighborsToCompare;
@@ -112,6 +119,8 @@ namespace Program
             // Mutation probabilities per patient
             reorderMutationThreshold = 0.008;
             transferMutationThreshold = 0.008;
+            // Mutation probabilities per nurse
+            reorderByScheduleMutationThreshold = 0.5;
 
             crossoverRate = 0.4;
 
@@ -205,19 +214,20 @@ namespace Program
 
 
                 // Multi threading -> sharing individuals
-                if (i % 500 == 0 && i != 0)
+                if (i % 1000 == 0 && i != 0)
                 {
+                    //Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} Waiting");
+
                     barrier.SignalAndWait();
 
                     //Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} Synched");
 
+                    int individualID = random.Next((int)(0.2 * populationSize)); // select random individual from top 20%
+                    Chromosome migrant = (Chromosome)population.population[individualID].Clone();
+                    int destination = random.Next(numThreads);
+
                     lock (islands)
                     {
-
-                        Chromosome migrant = (Chromosome)population.population[0].Clone();
-
-                        int destination = random.Next(numThreads);
-
                         for (int k = 0; k < numThreads; k++)
                         {
                             if (k == destination)
@@ -225,7 +235,6 @@ namespace Program
                                 islands[destination].population[populationSize - 1 - k] = migrant;
 
                             }
-
                         }
                     }
                 }
@@ -428,9 +437,12 @@ namespace Program
             int?[,] nursePaths;
             bool doReorderMutation;
             bool doTransferMutation;
+            bool doReorderByScheduleMutation;
             int nurseIndex;
             int patientIndex;
             int patientValue;
+            List<int[]> patients;
+            int[] patient;
 
             for (int i = 0; i < children.Length; i++)
             {
@@ -510,9 +522,33 @@ namespace Program
                                 nursePaths[j, m] = nursePaths[j, m + 1];
                             }
                         }
+
+                    }
+
+                    doReorderByScheduleMutation = random.NextDouble() < reorderByScheduleMutationThreshold;
+
+                    if (doReorderByScheduleMutation)
+                    {
+                        patients = new List<int[]>();
+
+                        for (int k = 0; k < nursePaths.GetLength(1); k++)
+                        {
+                            if (nursePaths[j, k] == null) break;
+
+                            patient = new int[] { k, problem.patients[(int)nursePaths[j, k]].start_time, (int)nursePaths[j, k] };
+
+                            patients.Add(patient);
+                        }
+                        patients = patients.OrderBy(e => e[1]).ToList();
+
+                        for (int k = 0; k < nursePaths.GetLength(1); k++)
+                        {
+                            if (nursePaths[j, k] == null) break;
+
+                            nursePaths[j, k] = patients[k][2];
+                        }
                     }
                 }
-                
 
             }
             return children;
