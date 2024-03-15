@@ -1,12 +1,8 @@
-﻿using Newtonsoft.Json.Bson;
-using Program;
-using System;
-using System.Collections;
+﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Threading;
 
 
@@ -17,36 +13,32 @@ namespace Program
         static int numThreads = 7;
         static Barrier barrier = new Barrier(numThreads);
         static Population[] islands = new Population[numThreads];
+        static Chromosome[] islandsFittest = new Chromosome[numThreads];
+        static bool stopGA = false;
 
         public int countChildFitter = 0;
         public int countParentFitter = 0;
         public static void Main(string[] args)
         {
+            string solutionDir = Directory.GetCurrentDirectory() + "\\..\\..\\..\\..\\";
 
-            // TODO
-            // _ grow reschedulre mutation prob with iterations. Still has some violations in final
+            string problemPath = solutionDir + "Data/train_0.json";
 
-            string solutionDir = Directory.GetCurrentDirectory() + "\\..\\..\\..\\";
-
-            TSP training_problem_0 = TSP.readJSON(solutionDir + "Data/train_0.json");
+            TSP training_problem = TSP.readJSON(problemPath);
 
             Visualizer visualizer = new Visualizer(
-                training_problem_0,
+                training_problem,
                 solutionDir + "/Program/plotting.py", 
                 solutionDir + "/Program/plottingData/chromosome.json");
-
-            // Single threaded:
-            //GA geneticAlgorithm = new GA(training_problem_0, 100, 10000, visualizer, 1);
-            //geneticAlgorithm.run();
 
 
             // Multi threading:
             Thread[] threads = new Thread[numThreads];
             for (int i = 0; i < numThreads; i++)
             {
-                TSP problem_0 = TSP.readJSON(solutionDir + "Data/train_0.json");
+                TSP problem = TSP.readJSON(problemPath);
 
-                GA geneticAlgorithm = new GA(problem_0, 80, 10000, visualizer, i);
+                GA geneticAlgorithm = new GA(problem, 100, 24000, i);
 
                 Thread thread = new Thread(geneticAlgorithm.run);
                 threads[i] = thread;
@@ -62,23 +54,25 @@ namespace Program
 
             for(int i = 0; i < numThreads; i++)
             {
-                if (islands[i].population[0].fitness < bestFitness)
+                if (islandsFittest[i].fitness < bestFitness)
                 {
                     bestIsland = i;
-                    bestFitness = (double)islands[i].population[0].fitness;
+                    bestFitness = (double)islandsFittest[i].fitness;
                 }
             }
-            Chromosome bestIndividual = islands[bestIsland].population[0];
+            Chromosome bestIndividualIsland = islandsFittest[bestIsland];
 
-            double fitness = bestIndividual.calcFitness(training_problem_0, false);
+            double fitness = bestIndividualIsland.calcFitness(training_problem, false);
 
-            visualizer.visualize(bestIndividual);
+            islands[bestIsland].calcFitness();
 
-            string jsonValidateRoutesFilePath = Directory.GetCurrentDirectory() + "\\..\\..\\..\\" + "/Program/plottingData/validate.json";
-            bestIndividual.saveNursePathsToJson(jsonValidateRoutesFilePath);
+            visualizer.visualize(bestIndividualIsland);
 
-            Console.WriteLine(bestIndividual.print(training_problem_0));
-            bestIndividual.print(training_problem_0, Directory.GetCurrentDirectory() + "\\..\\..\\..\\" + "/Program/plottingData/bestIndividual_stringformat.json");
+            string jsonValidateRoutesFilePath = Directory.GetCurrentDirectory() + "\\..\\..\\..\\..\\" + "/Program/plottingData/validate.json";
+            bestIndividualIsland.saveNursePathsToJson(jsonValidateRoutesFilePath);
+
+            Console.WriteLine(bestIndividualIsland.print(training_problem));
+            bestIndividualIsland.print(training_problem, Directory.GetCurrentDirectory() + "\\..\\..\\..\\..\\" + "/Program/plottingData/bestIndividual_stringformat.json");
 
             Console.WriteLine("Test");
 
@@ -88,12 +82,11 @@ namespace Program
 
 
         TSP problem;
-        Visualizer visualizer;
         int numIterations;
         Population population;
+        Chromosome bestIndividual;
         int populationSize;
         Random random;
-        //int seed = 1;
         int islandID;
         int numParentsToSelect;
         double reorderMutationThreshold;
@@ -102,27 +95,26 @@ namespace Program
         double crossoverRate;
         double crowdingEffect;
         int numNeighborsToCompare;
-        public GA(TSP problem, int populationSize, int numIterations, Visualizer visualizer, int islandID) 
+        public GA(TSP problem, int populationSize, int numIterations, int islandID) 
         {
             this.problem = problem;
             this.populationSize = populationSize;
             this.numIterations = numIterations; 
-            this.visualizer = visualizer;
             this.random = new Random(islandID);
             this.islandID = islandID;
 
             // only even number of parents to select
-            numParentsToSelect = (int)((double)populationSize * 0.4);
+            numParentsToSelect = (int)((double)populationSize * 0.6);
             if (numParentsToSelect % 2 != 0)
                 numParentsToSelect--;
 
             // Mutation probabilities per patient
-            reorderMutationThreshold = 0.008;
-            transferMutationThreshold = 0.008;
+            reorderMutationThreshold = 0.006;
+            transferMutationThreshold = 0.006;
             // Mutation probabilities per nurse
-            reorderByScheduleMutationThreshold = 0.5;
+            reorderByScheduleMutationThreshold = 0.7;
 
-            crossoverRate = 0.4;
+            crossoverRate = 0.5;
 
             this.crowdingEffect = 5.0;
             numNeighborsToCompare = (int)((double)populationSize * 0.1);
@@ -141,44 +133,51 @@ namespace Program
                 islands[islandID] = population;
             }
             
-
-            Chromosome bestIndividual = (Chromosome)population.population[0].Clone();
+            bestIndividual = (Chromosome)population.population[0].Clone();
             bestIndividual.fitness = double.MaxValue;
 
 
-            //test
             List<int[]> fitter = new List<int[]>();
             List<double> avgFitness = new List<double>();
             double sumFitness;
             double fitnessAvg;
             double previousFitnesAvg = double.MaxValue;
             int countEqualFitness = 0;
-            //___
+
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            TimeSpan timeLimit = TimeSpan.FromMinutes(8); // cancel if running over 8 minutes
 
 
             problem.calcAvgNumPatientsPerNurse();
             population.calcFitness();
             for (int i = 0; i < numIterations; i++)
             {
+                if (stopwatch.Elapsed >= timeLimit) break;
+
+                if (stopGA) break;
+
 
                 // Testing and logging
                 if (i % 100 == 0 && islandID == 0)
                 {
-
                     int[] pair = new int[] {countChildFitter, countParentFitter};
                     fitter.Add(pair);
 
                     sumFitness = population.calcFitness(); // all new added children already have calculated fitnesses
                     avgFitness.Add(sumFitness / populationSize);
 
-                    Console.WriteLine($"island {islandID} " + "Generation:  " + i + "\tFitness: " + population.population[0].fitness + " \t Avg fitness: " + sumFitness / populationSize);
+                    Console.WriteLine($"island {islandID} " + "Generation:  " + i + "\tFitness: " + (int)population.population[0].fitness + " \t Avg fitness: " + (sumFitness / populationSize));
 
+                    //resetPopulation();
+                    //population.calcFitness();
                 }
                 fitnessAvg = (population.calcFitness() / populationSize);
-                
 
 
-                // Start______________________________________________________________________
+
+
+                // Genetic algorithm steps:
                 population.sort();
 
                 if (population.population[0].fitness < bestIndividual.fitness)
@@ -207,8 +206,6 @@ namespace Program
 
                 //offspringSelection_fitnessProportionate(children, parents);
                 //offspringSelection_HammingDistanceCrowding(children, parents, numNeighborsToCompare, distanceWeight);
-                //offspringSelection_HammingDistanceCrowding(children, parents, 5, 10);
-                //offspringSelection_HammingDistanceCrowding(children, parents, 5, distanceWeight);
                 offspringSelection_HammingDistanceCrowding(children, parents, 5, distanceWeight + 0.5 * (double)countEqualFitness);
 
 
@@ -216,13 +213,9 @@ namespace Program
                 // Multi threading -> sharing individuals
                 if (i % 1000 == 0 && i != 0)
                 {
-                    //Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} Waiting");
-
                     barrier.SignalAndWait();
 
-                    //Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} Synched");
-
-                    int individualID = random.Next((int)(0.2 * populationSize)); // select random individual from top 20%
+                    int individualID = random.Next((int)(0.15 * populationSize)); // select random individual from top 15%
                     Chromosome migrant = (Chromosome)population.population[individualID].Clone();
                     int destination = random.Next(numThreads);
 
@@ -239,53 +232,46 @@ namespace Program
                     }
                 }
 
-
-
                 previousFitnesAvg = fitnessAvg;
 
             }
 
-            //// Termination
-            //visualizer.visualize(bestIndividual);
+            lock (islandsFittest)
+            {
+                islandsFittest[islandID] = bestIndividual;
+            }
 
-            //string jsonValidateRoutesFilePath = Directory.GetCurrentDirectory() + "\\..\\..\\..\\" + "/Program/plottingData/validate.json";
-            //bestIndividual.saveNursePathsToJson(jsonValidateRoutesFilePath);
-
-            //Console.WriteLine(bestIndividual.print(problem));
-            //bestIndividual.print(problem, Directory.GetCurrentDirectory() + "\\..\\..\\..\\" + "/Program/plottingData/bestIndividual_stringformat.json");
-
-            //Console.WriteLine("Test");
+            stopwatch.Stop();
 
         }
 
-        public void tempCheckDuplicates(Chromosome[] pop)
+        private void resetPopulation(int keepTopN = 5, double threshold = 0.9)
         {
-            return;
-            for (int i = 0; i < pop.Length; i++)
-            {
-                for(int j = 0; j < pop[i].nursePaths.GetLength(0); j++)
-                {
-                    if (pop[i].nursePaths[j, 0] == null) continue;
-                    for(int k = 0; k < pop[i].nursePaths.GetLength(1); k++)
-                    {
-                        if (pop[i].nursePaths[j, k] == null) continue;
-                        for (int l = 0; l < pop[i].nursePaths.GetLength(0); l++)
-                        {
-                            if (pop[i].nursePaths[l, 0] == null) continue;
-                            for (int m = 0; m < pop[i].nursePaths.GetLength(1); m++)
-                            {
-                                if (pop[i].nursePaths[l, m] == null) continue;
-                                if (j == l && k == m) continue;
-                                if (pop[i].nursePaths[j, k] == null || pop[i].nursePaths[l, m] == null) continue;
-                                if (pop[i].nursePaths[j, k] == pop[i].nursePaths[l, m])
-                                {
-                                    Console.WriteLine("PROBLEM!");
-                                    return;
-                                }
-                            }
-                        }
-                    }
+            // Reset all but top 5 individuals in population if 80% the same individuals
+            double samePopulation = 0.0;
+            int previousFitness = (int)population.population[0].fitness;
 
+            for (int j = 0; j < populationSize; j++)
+            {
+                if (previousFitness == (int)population.population[j].fitness)
+                {
+                    samePopulation += 1.0;
+                }
+                previousFitness = (int)population.population[j].fitness;
+            }
+
+
+            if (threshold < (double)(samePopulation / (double)populationSize))
+            {
+                Population new_population = new Population(populationSize, problem);
+                new_population.inintializeEvenPatientSplit(true);
+
+                lock (islands)
+                {
+                    for (int j = keepTopN; j < populationSize; j++)
+                    {
+                        islands[islandID].population[j] = new_population.population[j];
+                    }
                 }
             }
         }
@@ -330,7 +316,8 @@ namespace Program
             {
                 if (selected[i] == null)
                 {
-                    Console.WriteLine("HOW?");
+                    Console.WriteLine("Some parents are null somehow?");
+                    return fitnessProportionateSelection(n);
                 }
             }
 
@@ -429,8 +416,6 @@ namespace Program
                 children[i].insertByDistance(patients2, problem.travel_times);
                 children[i + 1].insertByDistance(patients1, problem.travel_times);
 
-                children[i].fitness = null;
-                children[i + 1].fitness = null;
 
             }
             return children;
@@ -453,9 +438,15 @@ namespace Program
             List<int[]> patients;
             int[] patient;
 
+            int reorderMutations;
+            int transferMutatinos;
+
             for (int i = 0; i < children.Length; i++)
             {
                 nursePaths = children[i].nursePaths;
+
+                reorderMutations = 0;
+                transferMutatinos = 0;
 
                 for (int j = 0; j < nursePaths.GetLength(0); j++)
                 {
@@ -485,6 +476,7 @@ namespace Program
                             nursePaths[j, patientIndex] = nursePaths[j, k];
                             nursePaths[j, k] = patientValue;
 
+                            reorderMutations++;
                         }
 
                         if (doTransferMutation)
@@ -530,6 +522,8 @@ namespace Program
 
                                 nursePaths[j, m] = nursePaths[j, m + 1];
                             }
+
+                            transferMutatinos++;
                         }
 
                     }
@@ -602,6 +596,8 @@ namespace Program
                     }
                 }
 
+                children[i].fitness = null;
+
                 childWeightedFitness = children[i].calcFitness(problem) - sumChildDistance / numIndividualsToComapreDistance * crowdingWeight;
                 parentWeightedFitness = parents[i].calcFitness(problem) - sumParentDistance / numIndividualsToComapreDistance * crowdingWeight;
 
@@ -650,51 +646,3 @@ namespace Program
 
 
 }
-//// TEsting threading
-//class Program2
-//{
-//    static Barrier barrier = new Barrier(3); // Specify the number of threads
-
-//    static void Main(string[] args)
-//    {
-//        // Create threads
-//        Thread thread1 = new Thread(ThreadMethod);
-//        Thread thread2 = new Thread(ThreadMethod);
-//        Thread thread3 = new Thread(ThreadMethod);
-
-//        // Start threads
-//        thread1.Start();
-//        thread2.Start();
-//        thread3.Start();
-
-//        // Wait for all threads to finish
-//        thread1.Join();
-//        thread2.Join();
-//        thread3.Join();
-
-//        Console.WriteLine("All threads completed.");
-//    }
-
-//    static void ThreadMethod()
-//    {
-//        for (int i = 0; i < 5; i++) // Each thread will have 5 iterations
-//        {
-//            // Perform some work
-//            Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} - Iteration {i + 1}");
-
-//            // Signal that this thread has reached the barrier
-//            barrier.SignalAndWait();
-
-//            // Perform data swapping after all threads have reached the barrier
-//            if (barrier.CurrentPhaseNumber == 0)
-//            {
-//                Console.WriteLine("Data swapping...");
-//                // Simulate data swapping
-//                Thread.Sleep(1000);
-//            }
-
-//            // Continue working after data swapping
-//            // Here you can add the code for further processing
-//        }
-//    }
-//}

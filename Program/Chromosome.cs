@@ -1,14 +1,8 @@
 ﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Net.WebSockets;
-using System.Security.Policy;
 using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace Program
 {
@@ -20,7 +14,7 @@ namespace Program
         public int maxNumNurses;
         public int numPatients { get; private set; }
 
-        public static double timeViolationPenaltyModifier = 10;
+        public static double timeViolationPenaltyModifier = 100;
         public static double capacityViolationPenaltyModifier = 500;
         public static double tooEarlyHeuristicPenaltyModifier = 100;
 
@@ -292,9 +286,6 @@ namespace Program
 
                     if (usedCapacity > problem.capacity_nurse)
                         totalCapacityViolation += usedCapacity - problem.capacity_nurse;
-
-                    //if (totalRouteTime > patient.start_time)
-                    //    countTooLate += 1;
 
                     if (totalRouteTime < patient.start_time)
                     {
